@@ -6,12 +6,14 @@ use serde::{Deserialize, Serialize};
 
 use snowbros_core::{Diagnostic, Severity};
 
+use crate::scoring::Scorecard;
+
 /// Complete result of one analysis run.
 ///
 /// Deterministic by construction: diagnostics are stored sorted by
 /// (file, span start, rule id), and the summary uses ordered maps.
 /// No timestamps — the same codebase must produce the identical report.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Report {
     /// Engine version that produced the report (`CARGO_PKG_VERSION`).
     pub engine_version: String,
@@ -19,6 +21,8 @@ pub struct Report {
     pub diagnostics: Vec<Diagnostic>,
     /// Aggregated counts.
     pub summary: Summary,
+    /// Explainable category scores and overall health.
+    pub scorecard: Scorecard,
 }
 
 /// Aggregated counts over a report's diagnostics.
@@ -53,10 +57,12 @@ impl Report {
             *summary.by_category.entry(d.category.clone()).or_default() += 1;
         }
 
+        let scorecard = Scorecard::compute(&diagnostics);
         Self {
             engine_version: env!("CARGO_PKG_VERSION").to_string(),
             diagnostics,
             summary,
+            scorecard,
         }
     }
 

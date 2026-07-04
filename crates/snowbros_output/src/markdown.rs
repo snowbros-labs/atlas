@@ -21,6 +21,17 @@ pub fn render(report: &Report) -> String {
     );
     let _ = writeln!(md);
 
+    let _ = writeln!(md, "## Health");
+    let _ = writeln!(md);
+    let _ = writeln!(md, "**Overall: {}/100**", report.scorecard.overall);
+    let _ = writeln!(md);
+    let _ = writeln!(md, "| Category | Score |");
+    let _ = writeln!(md, "|---|---|");
+    for (name, cat) in &report.scorecard.categories {
+        let _ = writeln!(md, "| {name} | {} |", cat.score);
+    }
+    let _ = writeln!(md);
+
     if report.summary.total == 0 {
         let _ = writeln!(md, "No issues found.");
         return md;

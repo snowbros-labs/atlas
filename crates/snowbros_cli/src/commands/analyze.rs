@@ -7,7 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use owo_colors::OwoColorize;
 
 use snowbros_core::Severity;
-use snowbros_output::{json, markdown, sarif, Report};
+use snowbros_output::{html, json, markdown, sarif, Report};
 use snowbros_rules::{run_all, AnalysisContext};
 
 use crate::pipeline;
@@ -23,6 +23,8 @@ pub enum Format {
     Markdown,
     /// SARIF v2.1.0 for code-scanning integrations.
     Sarif,
+    /// Self-contained HTML report.
+    Html,
 }
 
 /// Runs the analysis pipeline on `path` (defaults to cwd).
@@ -52,6 +54,7 @@ pub fn run(path: Option<Utf8PathBuf>, format: Format, ci: bool) -> Result<ExitCo
         Format::Json => println!("{}", json::render(&report)),
         Format::Markdown => println!("{}", markdown::render(&report)),
         Format::Sarif => println!("{}", sarif::render(&report)),
+        Format::Html => println!("{}", html::render(&report)),
         Format::Terminal => {
             print_terminal(&root, pipeline.scanned.files.len(), &pipeline, &report);
         }
@@ -130,4 +133,21 @@ fn print_terminal(root: &Utf8Path, file_count: usize, pipe: &pipeline::Pipeline,
             pipe.parse_failures.len()
         );
     }
+
+    // Scorecard.
+    println!();
+    let overall = report.scorecard.overall;
+    let overall_str = format!("{overall}");
+    let colored = match overall {
+        90..=100 => overall_str.green().bold().to_string(),
+        70..=89 => overall_str.yellow().bold().to_string(),
+        _ => overall_str.red().bold().to_string(),
+    };
+    let cats: Vec<String> = report
+        .scorecard
+        .categories
+        .iter()
+        .map(|(name, c)| format!("{name} {}", c.score))
+        .collect();
+    println!("{} health: {colored}/100 ({})", "◆".bold(), cats.join(", "));
 }
