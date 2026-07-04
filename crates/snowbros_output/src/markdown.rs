@@ -114,6 +114,7 @@ mod tests {
         .with_fix(SuggestedFix {
             description: "Parse with JSON.parse instead".into(),
             replacement: Some("JSON.parse(input)".into()),
+            target: None,
         })])
     }
 

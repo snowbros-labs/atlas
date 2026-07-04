@@ -14,11 +14,21 @@ design.
 ## Quick start
 
 ```sh
-cargo run -p snowbros_cli -- --version
-cargo run -p snowbros_cli -- init     # writes snowbros.toml
+sb init                      # write a starter snowbros.toml
+sb analyze                   # full analysis (terminal output)
+sb analyze --format json     # canonical JSON (also: markdown, sarif, html)
+sb analyze --ci              # exit 2 when High+ findings exist
+sb watch                     # continuous analysis, prints only changes
+sb fix --dry-run             # preview deterministic auto-fixes
+sb fix                       # apply them (also: --rule ID, --file PATH)
+sb graph --format dot        # semantic graph for Graphviz
+sb explain security/no-eval  # full rule documentation
 ```
 
 The binary installs as both `snowbros` and the short alias `sb`.
+Configuration lives in `snowbros.toml` (severity/confidence thresholds,
+rule enable/disable). `sb fix` applies only guarded, deterministic text
+edits — findings without a mechanical fix are reported, never guessed.
 
 ## Workspace layout
 

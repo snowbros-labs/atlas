@@ -12,7 +12,9 @@
 
 use std::collections::BTreeSet;
 
-use snowbros_core::{Confidence, Diagnostic, Evidence, Position, Severity, SourceLocation, Span};
+use snowbros_core::{
+    Confidence, Diagnostic, Evidence, Position, Severity, SourceLocation, Span, SuggestedFix,
+};
 
 use crate::context::AnalysisContext;
 use crate::registry::Rule;
@@ -70,7 +72,12 @@ impl Rule for UnusedEnvVars {
                 .with_evidence(Evidence::note(format!(
                     "declared at {}:{} — no `process.env.{}` read found",
                     decl.file, line, decl.name
-                ))),
+                )))
+                .with_fix(SuggestedFix {
+                    description: format!("Delete line {line} of {} (`{}`)", decl.file, decl.name),
+                    replacement: None,
+                    target: Some(decl.name.clone()),
+                }),
             );
         }
         diagnostics

@@ -975,6 +975,7 @@ dependencies = [
  "owo-colors",
  "predicates",
  "rayon",
+ "serde_json",
  "snowbros_cache",
  "snowbros_core",
  "snowbros_framework",

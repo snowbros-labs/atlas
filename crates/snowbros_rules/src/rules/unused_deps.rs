@@ -9,7 +9,7 @@
 
 use std::collections::BTreeSet;
 
-use snowbros_core::{Confidence, Diagnostic, Evidence, Severity};
+use snowbros_core::{Confidence, Diagnostic, Evidence, Severity, SuggestedFix};
 use snowbros_graph::NodeKind;
 
 use crate::context::AnalysisContext;
@@ -136,7 +136,12 @@ impl Rule for UnusedDependencies {
                 )
                 .with_evidence(Evidence::note(format!(
                     "declared as \"{name}\": \"{version}\" but no import of `{name}` found"
-                ))),
+                )))
+                .with_fix(SuggestedFix {
+                    description: format!("Remove `{name}` from package.json dependencies"),
+                    replacement: None,
+                    target: Some(name.clone()),
+                }),
             );
         }
         diagnostics

@@ -116,9 +116,15 @@ pub struct SuggestedFix {
     /// Human description of the fix.
     pub description: String,
     /// Replacement text for the diagnostic's span, when the fix is a pure
-    /// textual substitution. `None` means the fix requires manual work.
+    /// textual substitution. `None` means the fix is not a span
+    /// substitution (it may still be auto-fixable via `target`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub replacement: Option<String>,
+    /// Machine-readable fix target for rule-specific fixers (e.g. the
+    /// dependency or env-var name to remove). Interpreted by the fixer
+    /// registered for the rule; never shown as-is to users.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
 }
 
 #[cfg(test)]
@@ -148,6 +154,7 @@ mod tests {
         .with_fix(SuggestedFix {
             description: "Use JSON.parse for data parsing".into(),
             replacement: Some("JSON.parse(input)".into()),
+            target: None,
         })
         .with_docs_url("https://snowbros.dev/rules/security/no-eval");
 

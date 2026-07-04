@@ -6,6 +6,7 @@
 //! output.
 
 mod commands;
+mod fixers;
 pub mod pipeline;
 
 use std::process::ExitCode;
@@ -48,6 +49,20 @@ enum Command {
         /// Project root to watch (defaults to the current directory).
         path: Option<camino::Utf8PathBuf>,
     },
+    /// Apply deterministic fixes for auto-fixable findings.
+    Fix {
+        /// Project root (defaults to the current directory).
+        path: Option<camino::Utf8PathBuf>,
+        /// Only fix findings from these rule ids (repeatable).
+        #[arg(long = "rule")]
+        rules: Vec<String>,
+        /// Only fix findings in these files (root-relative, repeatable).
+        #[arg(long = "file")]
+        files: Vec<camino::Utf8PathBuf>,
+        /// Show what would change without writing any file.
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Explain a rule: what it detects, why, and how to fix findings.
     Explain {
         /// Rule id, e.g. `security/no-eval`.
@@ -82,6 +97,12 @@ pub fn run() -> ExitCode {
             no_cache,
         } => commands::analyze::run(path, format, ci, no_cache),
         Command::Watch { path } => commands::watch::run(path),
+        Command::Fix {
+            path,
+            rules,
+            files,
+            dry_run,
+        } => commands::fix::run(path, rules, files, dry_run),
         Command::Explain { rule_id } => commands::explain::run(&rule_id),
         Command::Graph { path, format } => commands::graph::run(path, format),
     };

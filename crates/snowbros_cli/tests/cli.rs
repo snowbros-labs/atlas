@@ -227,6 +227,92 @@ fn explain_unknown_rule_lists_available() {
         .stderr(predicate::str::contains("graph/no-circular-imports"));
 }
 
+fn fix_fixture(dir: &tempfile::TempDir) {
+    std::fs::write(
+        dir.path().join("package.json"),
+        "{\n  \"dependencies\": {\n    \"lodash\": \"^4.17.21\",\n    \"zod\": \"^3.23.0\"\n  }\n}\n",
+    )
+    .unwrap();
+    std::fs::write(dir.path().join(".env"), "USED_KEY=a\nGHOST_TOKEN=b\n").unwrap();
+    std::fs::write(
+        dir.path().join("main.ts"),
+        r#"import { z } from "zod"; const k = process.env.USED_KEY; export const s = z.string();"#,
+    )
+    .unwrap();
+}
+
+#[test]
+fn fix_dry_run_changes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    fix_fixture(&dir);
+    let pkg_before = std::fs::read_to_string(dir.path().join("package.json")).unwrap();
+    let env_before = std::fs::read_to_string(dir.path().join(".env")).unwrap();
+
+    snowbros()
+        .current_dir(dir.path())
+        .args(["fix", "--dry-run"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("lodash"))
+        .stdout(predicate::str::contains("GHOST_TOKEN"))
+        .stdout(predicate::str::contains("dry run: no files were written"));
+
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("package.json")).unwrap(),
+        pkg_before
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join(".env")).unwrap(),
+        env_before
+    );
+}
+
+#[test]
+fn fix_applies_and_is_idempotent() {
+    let dir = tempfile::tempdir().unwrap();
+    fix_fixture(&dir);
+
+    snowbros()
+        .current_dir(dir.path())
+        .arg("fix")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("2 fix(es) changed 2 file(s)"));
+
+    let pkg = std::fs::read_to_string(dir.path().join("package.json")).unwrap();
+    assert!(!pkg.contains("lodash"));
+    assert!(pkg.contains("\"zod\": \"^3.23.0\"")); // formatting preserved, comma fixed
+    serde_json::from_str::<serde_json::Value>(&pkg).unwrap(); // still valid JSON
+    let env = std::fs::read_to_string(dir.path().join(".env")).unwrap();
+    assert_eq!(env, "USED_KEY=a\n");
+
+    // Second run: nothing left to fix.
+    snowbros()
+        .current_dir(dir.path())
+        .arg("fix")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("nothing to fix"));
+}
+
+#[test]
+fn fix_rule_filter_limits_scope() {
+    let dir = tempfile::tempdir().unwrap();
+    fix_fixture(&dir);
+
+    snowbros()
+        .current_dir(dir.path())
+        .args(["fix", "--rule", "env/unused-env-var"])
+        .assert()
+        .success();
+
+    // Env fixed, package.json untouched.
+    let env = std::fs::read_to_string(dir.path().join(".env")).unwrap();
+    assert!(!env.contains("GHOST_TOKEN"));
+    let pkg = std::fs::read_to_string(dir.path().join("package.json")).unwrap();
+    assert!(pkg.contains("lodash"));
+}
+
 #[test]
 fn init_force_overwrites() {
     let dir = tempfile::tempdir().unwrap();
