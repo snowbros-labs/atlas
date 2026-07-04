@@ -1,0 +1,24 @@
+[package]
+name = "snowbros_parser"
+description = "Multi-language parsing layer (Tree-sitter + oxc integration)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+snowbros_core = { workspace = true }
+serde = { workspace = true }
+camino = { workspace = true }
+thiserror = { workspace = true }
+tree-sitter = { workspace = true }
+tree-sitter-javascript = { workspace = true }
+tree-sitter-typescript = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

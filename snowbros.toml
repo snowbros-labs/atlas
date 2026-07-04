@@ -1,0 +1,5 @@
+# SNOWBROS Inspector configuration (dog-fooding our own tool).
+
+[analysis]
+min_severity = "info"
+min_confidence = "possible"

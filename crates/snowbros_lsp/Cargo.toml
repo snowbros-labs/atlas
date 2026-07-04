@@ -1,0 +1,15 @@
+[package]
+name = "snowbros_lsp"
+description = "Language Server Protocol server for editor integration."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+snowbros_core = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,45 @@
+//! SNOWBROS Inspector CLI implementation.
+//!
+//! Installed as both `snowbros` and the short alias `sb` — two thin binary
+//! entry points call [`run`]. All analysis logic lives in library crates;
+//! this crate only parses arguments, dispatches commands, and formats
+//! output.
+
+mod commands;
+
+use std::process::ExitCode;
+
+use clap::{Parser, Subcommand};
+
+/// Deterministic engineering intelligence for your codebase.
+#[derive(Parser)]
+#[command(name = "snowbros", version, about, long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// Create a starter `snowbros.toml` in the current directory.
+    Init {
+        /// Overwrite an existing `snowbros.toml`.
+        #[arg(long)]
+        force: bool,
+    },
+}
+
+/// Parses CLI arguments and runs the selected command.
+pub fn run() -> ExitCode {
+    let cli = Cli::parse();
+    let result = match cli.command {
+        Command::Init { force } => commands::init::run(force),
+    };
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(message) => {
+            eprintln!("error: {message}");
+            ExitCode::FAILURE
+        }
+    }
+}
