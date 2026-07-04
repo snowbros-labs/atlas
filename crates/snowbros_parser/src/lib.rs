@@ -12,7 +12,7 @@ pub mod imports;
 pub mod language;
 pub mod treesitter;
 
-pub use facts::{extract_facts, FileFacts, NamedItem};
+pub use facts::{extract_facts, FileFacts, NamedItem, SecretCandidate, SecretSignal};
 pub use imports::{extract_imports, Import, ImportKind};
 pub use language::Language;
 pub use treesitter::{parse, ParseError, ParsedFile};

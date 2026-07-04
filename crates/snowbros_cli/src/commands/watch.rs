@@ -15,7 +15,7 @@ use owo_colors::OwoColorize;
 
 use snowbros_core::Diagnostic;
 use snowbros_output::Report;
-use snowbros_rules::{run_all, AnalysisContext, ContextInputs};
+use snowbros_rules::{apply_config, run_all, AnalysisContext, ContextInputs};
 
 use crate::pipeline;
 
@@ -49,7 +49,8 @@ fn pass(root: &Utf8PathBuf) -> Result<(Report, String), String> {
             import_bindings: &pipe.import_bindings,
         },
     );
-    let report = Report::new(run_all(&ctx));
+    let config = crate::commands::analyze::load_config(root)?;
+    let report = Report::new(apply_config(run_all(&ctx), &config));
     let stats = format!(
         "{} reused, {} parsed, {} ms",
         pipe.cache_stats.hits,

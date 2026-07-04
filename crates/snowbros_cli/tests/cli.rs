@@ -170,6 +170,43 @@ fn cache_picks_up_file_changes_and_deletions() {
 }
 
 #[test]
+fn config_disables_rules_and_enforces_thresholds() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("orphan.ts"), "export const o = 1;").unwrap();
+    std::fs::write(dir.path().join("evil.ts"), "eval(input);").unwrap();
+
+    // Without config: dead-file (low) and no-eval (high) both fire.
+    snowbros()
+        .current_dir(dir.path())
+        .args(["analyze", "--format", "json", "--no-cache"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("graph/dead-file"))
+        .stdout(predicate::str::contains("security/no-eval"));
+
+    // Config: disable dead-file explicitly, and raise the severity floor
+    // so only high+ findings remain.
+    std::fs::write(
+        dir.path().join("snowbros.toml"),
+        r#"
+[analysis]
+min_severity = "high"
+
+[rules]
+disable = ["graph/dead-file"]
+"#,
+    )
+    .unwrap();
+    snowbros()
+        .current_dir(dir.path())
+        .args(["analyze", "--format", "json", "--no-cache"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("graph/dead-file").not())
+        .stdout(predicate::str::contains("security/no-eval"));
+}
+
+#[test]
 fn init_force_overwrites() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("snowbros.toml"), "# existing").unwrap();

@@ -27,6 +27,7 @@ pub const MONITORED_CATEGORIES: &[&str] = &[
     "environment",
     "imports",
     "performance",
+    "security",
 ];
 
 /// Points deducted per finding of a severity.

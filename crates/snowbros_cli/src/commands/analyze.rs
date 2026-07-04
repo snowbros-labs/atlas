@@ -6,9 +6,9 @@ use std::process::ExitCode;
 use camino::{Utf8Path, Utf8PathBuf};
 use owo_colors::OwoColorize;
 
-use snowbros_core::Severity;
+use snowbros_core::{Config, Severity};
 use snowbros_output::{html, json, markdown, sarif, Report};
-use snowbros_rules::{run_all, AnalysisContext, ContextInputs};
+use snowbros_rules::{apply_config, run_all, AnalysisContext, ContextInputs};
 
 use crate::pipeline;
 
@@ -58,7 +58,8 @@ pub fn run(
             import_bindings: &pipeline.import_bindings,
         },
     );
-    let report = Report::new(run_all(&ctx));
+    let config = load_config(&root)?;
+    let report = Report::new(apply_config(run_all(&ctx), &config));
 
     match format {
         Format::Json => println!("{}", json::render(&report)),
@@ -74,6 +75,17 @@ pub fn run(
         return Ok(ExitCode::from(2));
     }
     Ok(ExitCode::SUCCESS)
+}
+
+/// Loads `<root>/snowbros.toml`, or the defaults when absent. A present
+/// but invalid config is a hard error — silently ignoring it would make
+/// results differ from what the user configured.
+pub(crate) fn load_config(root: &Utf8Path) -> Result<Config, String> {
+    let path = root.join(Config::FILE_NAME);
+    if !path.exists() {
+        return Ok(Config::default());
+    }
+    Config::load(path.as_std_path()).map_err(|e| e.to_string())
 }
 
 /// Colored terminal rendering.

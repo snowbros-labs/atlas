@@ -36,6 +36,43 @@ pub struct FileFacts {
     /// from `next/cache`) — only counted when actually imported from
     /// those modules.
     pub dynamic_api_calls: Vec<NamedItem>,
+    /// `eval(...)`, `window.eval(...)`, `globalThis.eval(...)`, and
+    /// `new Function(...)` sites. The name records which form was used.
+    pub eval_calls: Vec<NamedItem>,
+    /// Potential hardcoded secrets. `name` describes the signal (see
+    /// [`SecretSignal`]); the literal value is never stored beyond a
+    /// redacted preview.
+    pub secret_candidates: Vec<SecretCandidate>,
+}
+
+/// Why a string literal looks like a secret.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SecretSignal {
+    /// The literal starts with a well-known credential prefix
+    /// (`sk-`, `ghp_`, `AKIA`, `xoxb-`, …).
+    KnownPrefix,
+    /// A variable whose name suggests a credential is assigned a
+    /// long literal.
+    SuspiciousName,
+}
+
+/// A string literal that looks like a hardcoded credential.
+///
+/// Only a redacted preview (first 4 characters) and the length are
+/// kept — reports must never leak the secret itself.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SecretCandidate {
+    /// Variable/property name it was assigned to, when known.
+    pub binding: Option<String>,
+    /// First 4 characters of the literal.
+    pub preview: String,
+    /// Full length of the literal in characters.
+    pub length: usize,
+    /// Which heuristic fired.
+    pub signal: SecretSignal,
+    /// Location of the string literal.
+    pub span: Span,
 }
 
 /// Next.js modules whose named imports force dynamic rendering when
@@ -136,13 +173,133 @@ fn collect(node: Node<'_>, parsed: &ParsedFile, dynamic_names: &[&str], facts: &
                         span: span_of(node),
                     });
                 }
+                if matches!(name, "eval" | "window.eval" | "globalThis.eval") {
+                    facts.eval_calls.push(NamedItem {
+                        name: name.to_string(),
+                        span: span_of(node),
+                    });
+                }
             }
+        }
+        "new_expression" => {
+            if let Some(ctor) = node.child_by_field_name("constructor") {
+                if parsed.text_of(ctor) == "Function" {
+                    facts.eval_calls.push(NamedItem {
+                        name: "new Function".to_string(),
+                        span: span_of(node),
+                    });
+                }
+            }
+        }
+        "string" => {
+            collect_secret_candidate(node, parsed, facts);
         }
         _ => {}
     }
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         collect(child, parsed, dynamic_names, facts);
+    }
+}
+
+/// Well-known credential prefixes. A literal starting with one of these
+/// (and long enough) is a secret candidate regardless of variable name.
+const SECRET_PREFIXES: &[&str] = &[
+    "sk-",
+    "sk_live_",
+    "sk_test_",
+    "ghp_",
+    "gho_",
+    "github_pat_",
+    "glpat-",
+    "xoxb-",
+    "xoxp-",
+    "AKIA",
+    "ASIA",
+    "AIza",
+    "ya29.",
+    "npm_",
+    "-----BEGIN",
+];
+
+/// Name fragments that mark a binding as credential-like. Deliberately
+/// excludes bare `key` (too many `reactKey`-style false positives).
+const SECRET_NAME_FRAGMENTS: &[&str] = &[
+    "secret",
+    "token",
+    "password",
+    "passwd",
+    "apikey",
+    "api_key",
+    "private_key",
+    "credential",
+];
+
+/// Obvious placeholders — never secrets.
+fn is_placeholder(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
+    value.contains(' ')
+        || value.starts_with("http")
+        || value.starts_with('<')
+        || value.starts_with("process.env")
+        || lower.contains("example")
+        || lower.contains("changeme")
+        || lower.contains("placeholder")
+        || lower.contains("your-")
+        || lower.contains("your_")
+        || lower.contains("xxx")
+}
+
+/// Name of the binding a string is assigned to, when directly inside a
+/// `const x = "…"`, `{ key: "…" }`, or `x = "…"`.
+fn binding_name<'t>(string_node: Node<'t>, parsed: &'t ParsedFile) -> Option<&'t str> {
+    let parent = string_node.parent()?;
+    match parent.kind() {
+        "variable_declarator" => parent
+            .child_by_field_name("name")
+            .map(|n| parsed.text_of(n)),
+        "pair" => parent.child_by_field_name("key").map(|n| parsed.text_of(n)),
+        "assignment_expression" => parent
+            .child_by_field_name("left")
+            .map(|n| parsed.text_of(n)),
+        _ => None,
+    }
+}
+
+/// Checks one string literal against the secret heuristics.
+fn collect_secret_candidate(node: Node<'_>, parsed: &ParsedFile, facts: &mut FileFacts) {
+    let mut cursor = node.walk();
+    let fragment = node
+        .children(&mut cursor)
+        .find(|c| c.kind() == "string_fragment");
+    let Some(fragment) = fragment else {
+        return;
+    };
+    let value = parsed.text_of(fragment);
+    if value.len() < 8 || is_placeholder(value) {
+        return;
+    }
+
+    let binding = binding_name(node, parsed);
+    let signal = if value.len() >= 16 && SECRET_PREFIXES.iter().any(|p| value.starts_with(p)) {
+        Some(SecretSignal::KnownPrefix)
+    } else if binding.is_some_and(|name| {
+        let lower = name.to_ascii_lowercase();
+        SECRET_NAME_FRAGMENTS.iter().any(|f| lower.contains(f))
+    }) {
+        Some(SecretSignal::SuspiciousName)
+    } else {
+        None
+    };
+
+    if let Some(signal) = signal {
+        facts.secret_candidates.push(SecretCandidate {
+            binding: binding.map(str::to_string),
+            preview: value.chars().take(4).collect(),
+            length: value.chars().count(),
+            signal,
+            span: span_of(node),
+        });
     }
 }
 
@@ -303,6 +460,69 @@ export function Page() { return cookies(); }
             Language::TypeScript,
         );
         assert!(without.dynamic_api_calls.is_empty());
+    }
+
+    #[test]
+    fn eval_variants_recorded() {
+        let facts = facts_of(
+            r#"
+eval("1+1");
+window.eval(code);
+globalThis.eval(code);
+const f = new Function("a", "return a");
+const evaluate = (x) => x * 2; evaluate(3);
+"#,
+            Language::JavaScript,
+        );
+        let names: Vec<&str> = facts.eval_calls.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(
+            names,
+            vec!["eval", "window.eval", "globalThis.eval", "new Function"]
+        );
+    }
+
+    #[test]
+    fn secret_prefix_detected_and_redacted() {
+        let facts = facts_of(
+            r#"const stripe = "sk_live_abc123def456ghi789";"#,
+            Language::TypeScript,
+        );
+        assert_eq!(facts.secret_candidates.len(), 1);
+        let c = &facts.secret_candidates[0];
+        assert_eq!(c.signal, SecretSignal::KnownPrefix);
+        assert_eq!(c.preview, "sk_l");
+        // The full value must never be stored.
+        assert!(c.preview.len() <= 4);
+        assert_eq!(c.binding.as_deref(), Some("stripe"));
+    }
+
+    #[test]
+    fn suspicious_name_detected() {
+        let facts = facts_of(
+            r#"const apiToken = "zz91jf02mfkw88ax";"#,
+            Language::TypeScript,
+        );
+        assert_eq!(facts.secret_candidates.len(), 1);
+        assert_eq!(
+            facts.secret_candidates[0].signal,
+            SecretSignal::SuspiciousName
+        );
+    }
+
+    #[test]
+    fn placeholders_and_normal_strings_ignored() {
+        let facts = facts_of(
+            r#"
+const password = "your-password-here";
+const apiToken = "example-token-123";
+const label = "just a normal sentence";
+const url = "https://api.example.com/v1";
+const short = "abc";
+const name = "zz91jf02mfkw88ax";
+"#,
+            Language::TypeScript,
+        );
+        assert!(facts.secret_candidates.is_empty());
     }
 
     #[test]

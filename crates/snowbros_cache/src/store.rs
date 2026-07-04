@@ -15,7 +15,8 @@ use crate::fingerprint::{hash_bytes, FileFingerprint};
 /// Bumped whenever the on-disk layout or cached data semantics change.
 /// A mismatch discards the cache wholesale.
 /// v2: entries store full [`FileFacts`] instead of just imports.
-pub const CACHE_FORMAT_VERSION: u32 = 2;
+/// v3: facts gained eval calls and secret candidates.
+pub const CACHE_FORMAT_VERSION: u32 = 3;
 
 /// Directory (under the project root) holding cache state.
 pub const CACHE_DIR: &str = ".snowbros";

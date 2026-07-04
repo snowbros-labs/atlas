@@ -3,6 +3,8 @@
 pub mod circular;
 pub mod dead_files;
 pub mod forced_dynamic;
+pub mod hardcoded_secret;
+pub mod no_eval;
 pub mod unresolved;
 pub mod unused_deps;
 pub mod unused_env;
