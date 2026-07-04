@@ -43,8 +43,9 @@ pub struct FileEntry {
 /// Result of a cache lookup for one file.
 #[derive(Debug)]
 pub enum Lookup {
-    /// Entry is valid — reuse the cached parse result.
-    Fresh(FileEntry),
+    /// Entry is valid — reuse the cached parse result. Boxed: an entry
+    /// carries full file facts and dwarfs the `Stale` variant.
+    Fresh(Box<FileEntry>),
     /// Entry is stale or absent. When the content was already read for
     /// hash comparison it is handed back so the caller never reads the
     /// file twice.
@@ -137,7 +138,7 @@ impl CacheData {
         };
         // Fast path: identical size and a usable, identical mtime.
         if current == entry.fingerprint && current.mtime_ms != 0 {
-            return Lookup::Fresh(entry.clone());
+            return Lookup::Fresh(Box::new(entry.clone()));
         }
         // Slow path: metadata moved (touch, checkout, copy) — compare
         // content. Same content ⇒ same parse result, by determinism.
@@ -147,7 +148,7 @@ impl CacheData {
         if hash_bytes(content.as_bytes()) == entry.content_hash {
             let mut refreshed = entry.clone();
             refreshed.fingerprint = current;
-            return Lookup::Fresh(refreshed);
+            return Lookup::Fresh(Box::new(refreshed));
         }
         Lookup::Stale(Some(content))
     }

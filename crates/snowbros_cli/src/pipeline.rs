@@ -115,7 +115,7 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
             let (entry, hit) = match cache.lookup(&file.path, abs.as_std_path()) {
                 Lookup::Fresh(entry) => {
                     debug!(target: "snowbros::cache", path = %file.path, "cache hit");
-                    (entry, true)
+                    (*entry, true)
                 }
                 Lookup::Stale(content) => {
                     debug!(target: "snowbros::cache", path = %file.path, "cache miss — parsing");
