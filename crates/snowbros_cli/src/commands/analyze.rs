@@ -11,12 +11,13 @@ use std::fs;
 use camino::{Utf8Path, Utf8PathBuf};
 use owo_colors::OwoColorize;
 
-use snowbros_core::{Confidence, Diagnostic, Evidence, Position, Severity, SourceLocation, Span};
+use snowbros_core::Severity;
 use snowbros_framework::{detect_frameworks, ProjectFacts};
 use snowbros_graph::{EdgeKind, Node, SemanticGraph};
 use snowbros_output::{json, markdown, Report};
 use snowbros_parser::{extract_imports, parse};
-use snowbros_resolver::{resolve, FileSet, Resolution};
+use snowbros_resolver::{resolve, FileSet, Resolution, TsPaths};
+use snowbros_rules::{run_all, AnalysisContext};
 use snowbros_scanner::scan;
 
 /// Output format for `analyze`.
@@ -52,6 +53,7 @@ pub fn run(path: Option<Utf8PathBuf>, format: Format) -> Result<(), String> {
 
     // 3–5. Parse, extract imports, resolve, build graph.
     let file_set: FileSet = scanned.files.iter().map(|f| f.path.clone()).collect();
+    let aliases = TsPaths::load(&root);
     let mut graph = SemanticGraph::new();
     let mut parse_failures: Vec<String> = Vec::new();
 
@@ -72,7 +74,7 @@ pub fn run(path: Option<Utf8PathBuf>, format: Format) -> Result<(), String> {
             }
         };
         for import in extract_imports(&parsed) {
-            match resolve(&file.path, &import.specifier, &file_set) {
+            match resolve(&file.path, &import.specifier, &file_set, &aliases) {
                 Resolution::Project(target) => {
                     let to_id = graph.add_node(Node::file(target));
                     graph.add_edge(from_id, to_id, EdgeKind::Imports);
@@ -82,16 +84,16 @@ pub fn run(path: Option<Utf8PathBuf>, format: Format) -> Result<(), String> {
                     graph.add_edge(from_id, pkg_id, EdgeKind::DependsOn);
                 }
                 Resolution::Unresolved(_) => {
-                    // Unknown aliases: no edge, no guess. tsconfig paths
-                    // support will resolve these.
+                    // Provably unknowable (unconfigured alias, missing
+                    // target): no edge, no guess.
                 }
             }
         }
     }
 
     // 6. Rules.
-    let diagnostics = circular_import_diagnostics(&graph);
-    let report = Report::new(diagnostics);
+    let ctx = AnalysisContext::new(&graph, facts.package_json.as_ref(), &frameworks);
+    let report = Report::new(run_all(&ctx));
 
     // 7. Output.
     match format {
@@ -109,46 +111,6 @@ pub fn run(path: Option<Utf8PathBuf>, format: Format) -> Result<(), String> {
         }
     }
     Ok(())
-}
-
-/// Rule `graph/no-circular-imports`: every import cycle is one finding
-/// anchored at the lexicographically first file of the cycle, with every
-/// member listed as evidence — one root cause, not N duplicate warnings.
-fn circular_import_diagnostics(graph: &SemanticGraph) -> Vec<Diagnostic> {
-    let mut diagnostics = Vec::new();
-    for group in graph.circular_groups() {
-        let mut labels: Vec<String> = group
-            .iter()
-            .filter_map(|&id| graph.node(id).map(|n| n.label()))
-            .collect();
-        labels.sort();
-        let Some(anchor) = labels.first().cloned() else {
-            continue;
-        };
-
-        let mut diag = Diagnostic::new(
-            "graph/no-circular-imports",
-            "Circular import chain",
-            format!(
-                "{} files import each other in a cycle. Cycles make modules \
-                 impossible to test in isolation, can break tree-shaking, and \
-                 cause undefined imports at runtime under some module orders.",
-                labels.len()
-            ),
-            "architecture",
-            Severity::High,
-            Confidence::Certain,
-            SourceLocation::new(
-                anchor,
-                Span::new(Position::new(1, 1), Position::new(1, 1), 0, 0),
-            ),
-        );
-        for label in &labels {
-            diag = diag.with_evidence(Evidence::note(format!("cycle member: {label}")));
-        }
-        diagnostics.push(diag);
-    }
-    diagnostics
 }
 
 /// Colored terminal rendering.

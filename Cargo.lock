@@ -595,6 +595,7 @@ dependencies = [
  "snowbros_output",
  "snowbros_parser",
  "snowbros_resolver",
+ "snowbros_rules",
  "snowbros_scanner",
  "tempfile",
 ]
@@ -687,14 +688,19 @@ version = "0.1.0"
 dependencies = [
  "camino",
  "serde",
+ "serde_json",
  "snowbros_core",
+ "tempfile",
 ]
 
 [[package]]
 name = "snowbros_rules"
 version = "0.1.0"
 dependencies = [
+ "camino",
  "snowbros_core",
+ "snowbros_framework",
+ "snowbros_graph",
 ]
 
 [[package]]

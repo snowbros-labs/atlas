@@ -1,18 +1,25 @@
 //! Import resolution: maps a module specifier written in one file to the
 //! project file it refers to.
 //!
-//! Sprint scope: relative specifiers (`./x`, `../y`) with Node/TS-style
-//! extension and index probing. Package specifiers are classified as
-//! [`Resolution::External`]; alias specifiers (`@/…`, tsconfig `paths`)
-//! are [`Resolution::Unresolved`] until tsconfig support lands — the
+//! Covers:
+//! - relative specifiers (`./x`, `../y`) with Node/TS extension and
+//!   index probing
+//! - tsconfig `paths` aliases (`@/…`) via [`TsPaths`]
+//! - bare package specifiers → [`Resolution::External`]
+//!
+//! Anything not provably resolvable is [`Resolution::Unresolved`] — the
 //! engine reports "don't know" rather than guessing.
 //!
-//! Resolution is a pure function over a [`FileSet`] snapshot: no I/O,
-//! fully deterministic, trivially testable.
+//! Resolution is a pure function over a [`FileSet`] snapshot and a
+//! pre-loaded [`TsPaths`] table: no I/O, fully deterministic, trivially
+//! testable.
 
 pub mod fileset;
+pub mod jsonc;
+pub mod tsconfig;
 
 pub use fileset::FileSet;
+pub use tsconfig::TsPaths;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use serde::{Deserialize, Serialize};
@@ -36,45 +43,56 @@ pub enum Resolution {
 }
 
 /// Resolves `specifier` as written in `from` (root-relative file path)
-/// against the project's file set.
-pub fn resolve(from: &Utf8Path, specifier: &str, files: &FileSet) -> Resolution {
+/// against the project's file set and tsconfig alias table.
+pub fn resolve(from: &Utf8Path, specifier: &str, files: &FileSet, aliases: &TsPaths) -> Resolution {
     if specifier.starts_with("./") || specifier.starts_with("../") {
-        return resolve_relative(from, specifier, files);
+        let base = from.parent().unwrap_or(Utf8Path::new(""));
+        let target = normalize(&base.join(specifier));
+        return match probe(&target, files) {
+            Some(path) => Resolution::Project(path),
+            None => Resolution::Unresolved(specifier.to_string()),
+        };
     }
-    // Bare specifiers: packages (`react`, `node:fs`, `@scope/pkg`).
-    // `@/…` and other single-`@` aliases are tsconfig-defined, not
-    // packages — we cannot resolve them yet.
+
+    // tsconfig alias? Try every candidate the alias table produces.
+    let candidates = aliases.expand(specifier);
+    if !candidates.is_empty() {
+        for candidate in &candidates {
+            if let Some(path) = probe(candidate, files) {
+                return Resolution::Project(path);
+            }
+        }
+        return Resolution::Unresolved(specifier.to_string());
+    }
+
+    // Alias-looking specifiers with no configured mapping: don't know,
+    // don't guess.
     if specifier.starts_with("@/") || specifier.starts_with("~/") {
         return Resolution::Unresolved(specifier.to_string());
     }
     Resolution::External(specifier.to_string())
 }
 
-/// Relative resolution with extension and index probing.
-fn resolve_relative(from: &Utf8Path, specifier: &str, files: &FileSet) -> Resolution {
-    let base = from.parent().unwrap_or(Utf8Path::new(""));
-    let target = normalize(&base.join(specifier));
-
-    // 1. Exact file (specifier already has an extension).
-    if files.contains(&target) {
-        return Resolution::Project(target);
+/// Extension and index probing against the file set:
+/// exact → `x.{ts,tsx,…}` → `x/index.{ts,tsx,…}`.
+fn probe(target: &Utf8Path, files: &FileSet) -> Option<Utf8PathBuf> {
+    if files.contains(target) {
+        return Some(target.to_path_buf());
     }
-    // 2. Extension probing: ./util → ./util.ts, ./util.tsx, …
     for ext in EXTENSIONS {
         let candidate = Utf8PathBuf::from(format!("{target}.{ext}"));
         if files.contains(&candidate) {
-            return Resolution::Project(candidate);
+            return Some(candidate);
         }
     }
-    // 3. Directory index: ./util → ./util/index.ts, …
-    // Built as a string to keep forward slashes on Windows.
+    // Built as strings to keep forward slashes on Windows.
     for ext in EXTENSIONS {
         let candidate = Utf8PathBuf::from(format!("{target}/index.{ext}"));
         if files.contains(&candidate) {
-            return Resolution::Project(candidate);
+            return Some(candidate);
         }
     }
-    Resolution::Unresolved(specifier.to_string())
+    None
 }
 
 /// Lexically normalizes a path: resolves `.` and `..` segments without
@@ -107,7 +125,12 @@ mod tests {
     fn exact_relative_file() {
         let fs = files(&["src/app.ts", "src/util.ts"]);
         assert_eq!(
-            resolve(Utf8Path::new("src/app.ts"), "./util.ts", &fs),
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "./util.ts",
+                &fs,
+                &TsPaths::default()
+            ),
             Resolution::Project("src/util.ts".into())
         );
     }
@@ -116,7 +139,12 @@ mod tests {
     fn extension_probing_prefers_ts() {
         let fs = files(&["src/app.ts", "src/util.js", "src/util.ts"]);
         assert_eq!(
-            resolve(Utf8Path::new("src/app.ts"), "./util", &fs),
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "./util",
+                &fs,
+                &TsPaths::default()
+            ),
             Resolution::Project("src/util.ts".into())
         );
     }
@@ -125,7 +153,12 @@ mod tests {
     fn index_probing() {
         let fs = files(&["src/app.ts", "src/components/index.tsx"]);
         assert_eq!(
-            resolve(Utf8Path::new("src/app.ts"), "./components", &fs),
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "./components",
+                &fs,
+                &TsPaths::default()
+            ),
             Resolution::Project("src/components/index.tsx".into())
         );
     }
@@ -137,7 +170,8 @@ mod tests {
             resolve(
                 Utf8Path::new("src/features/auth/login.ts"),
                 "../../shared/api",
-                &fs
+                &fs,
+                &TsPaths::default()
             ),
             Resolution::Project("src/shared/api.ts".into())
         );
@@ -147,15 +181,30 @@ mod tests {
     fn bare_specifier_is_external() {
         let fs = files(&["src/app.ts"]);
         assert_eq!(
-            resolve(Utf8Path::new("src/app.ts"), "react", &fs),
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "react",
+                &fs,
+                &TsPaths::default()
+            ),
             Resolution::External("react".into())
         );
         assert_eq!(
-            resolve(Utf8Path::new("src/app.ts"), "node:fs", &fs),
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "node:fs",
+                &fs,
+                &TsPaths::default()
+            ),
             Resolution::External("node:fs".into())
         );
         assert_eq!(
-            resolve(Utf8Path::new("src/app.ts"), "@scope/pkg", &fs),
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "@scope/pkg",
+                &fs,
+                &TsPaths::default()
+            ),
             Resolution::External("@scope/pkg".into())
         );
     }
@@ -164,8 +213,39 @@ mod tests {
     fn alias_is_unresolved_not_guessed() {
         let fs = files(&["src/app.ts", "src/components/ui/button.tsx"]);
         assert_eq!(
-            resolve(Utf8Path::new("src/app.ts"), "@/components/ui/button", &fs),
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "@/components/ui/button",
+                &fs,
+                &TsPaths::default()
+            ),
             Resolution::Unresolved("@/components/ui/button".into())
+        );
+    }
+
+    #[test]
+    fn configured_alias_resolves() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("tsconfig.json"),
+            r#"{ "compilerOptions": { "paths": { "@/*": ["./src/*"] } } }"#,
+        )
+        .unwrap();
+        let aliases = TsPaths::load(Utf8Path::new(dir.path().to_str().unwrap()));
+        let fs = files(&["src/app.ts", "src/components/ui/button.tsx"]);
+        assert_eq!(
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "@/components/ui/button",
+                &fs,
+                &aliases
+            ),
+            Resolution::Project("src/components/ui/button.tsx".into())
+        );
+        // Configured alias pointing at nothing: Unresolved, not External.
+        assert_eq!(
+            resolve(Utf8Path::new("src/app.ts"), "@/missing", &fs, &aliases),
+            Resolution::Unresolved("@/missing".into())
         );
     }
 
@@ -173,7 +253,12 @@ mod tests {
     fn missing_relative_target_is_unresolved() {
         let fs = files(&["src/app.ts"]);
         assert_eq!(
-            resolve(Utf8Path::new("src/app.ts"), "./nope", &fs),
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "./nope",
+                &fs,
+                &TsPaths::default()
+            ),
             Resolution::Unresolved("./nope".into())
         );
     }

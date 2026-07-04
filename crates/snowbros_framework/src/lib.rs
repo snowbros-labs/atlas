@@ -14,7 +14,7 @@ pub mod detect;
 pub mod facts;
 pub mod framework;
 
-pub use detect::detect_frameworks;
+pub use detect::{detect_frameworks, framework_packages};
 pub use facts::{PackageJson, ProjectFacts};
 pub use framework::{DetectedFramework, Framework};
 

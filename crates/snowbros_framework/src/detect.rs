@@ -109,6 +109,17 @@ const SIGNALS: &[Signals] = &[
     },
 ];
 
+/// The npm packages that positively identify a framework — used by rules
+/// that must not flag framework packages as unused (frameworks consume
+/// their packages implicitly: JSX auto-runtime, CLI entry points, …).
+pub fn framework_packages(framework: Framework) -> &'static [&'static str] {
+    SIGNALS
+        .iter()
+        .find(|s| s.framework == framework)
+        .map(|s| s.packages)
+        .unwrap_or(&[])
+}
+
 /// Runs all detectors against the given facts.
 ///
 /// Also reports [`Framework::Node`] when a `package.json` exists and no

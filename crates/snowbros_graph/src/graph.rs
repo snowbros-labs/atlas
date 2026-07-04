@@ -161,10 +161,33 @@ impl SemanticGraph {
 
     /// Iterates all file nodes (sorted by path) — common analyzer input.
     pub fn files(&self) -> Vec<(NodeId, &Node)> {
+        self.nodes_of(|kind| matches!(kind, NodeKind::File { .. }))
+    }
+
+    /// Iterates all external package nodes, sorted by node id.
+    pub fn packages(&self) -> Vec<(NodeId, &Node)> {
+        self.nodes_of(|kind| matches!(kind, NodeKind::Package { .. }))
+    }
+
+    /// Whether a node has at least one incoming edge of the given kind.
+    pub fn has_incoming(&self, id: NodeId, kind: EdgeKind) -> bool {
+        self.inner
+            .edges_directed(Self::ix(id), Direction::Incoming)
+            .any(|e| *e.weight() == kind)
+    }
+
+    /// Whether a node has at least one outgoing edge of the given kind.
+    pub fn has_outgoing(&self, id: NodeId, kind: EdgeKind) -> bool {
+        self.inner
+            .edges_directed(Self::ix(id), Direction::Outgoing)
+            .any(|e| *e.weight() == kind)
+    }
+
+    fn nodes_of(&self, pred: impl Fn(&NodeKind) -> bool) -> Vec<(NodeId, &Node)> {
         let mut out: Vec<(NodeId, &Node)> = self
             .inner
             .node_indices()
-            .filter(|&ix| matches!(self.inner[ix].kind, NodeKind::File { .. }))
+            .filter(|&ix| pred(&self.inner[ix].kind))
             .map(|ix| (Self::id(ix), &self.inner[ix]))
             .collect();
         out.sort_by_key(|(id, _)| *id);

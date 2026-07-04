@@ -28,6 +28,7 @@ snowbros_resolver = { workspace = true }
 snowbros_graph = { workspace = true }
 snowbros_framework = { workspace = true }
 snowbros_output = { workspace = true }
+snowbros_rules = { workspace = true }
 clap = { workspace = true }
 owo-colors = { workspace = true }
 camino = { workspace = true }
