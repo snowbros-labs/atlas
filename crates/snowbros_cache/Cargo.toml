@@ -1,6 +1,6 @@
 [package]
 name = "snowbros_cache"
-description = "Incremental computation cache (Salsa-inspired query system)."
+description = "Persistent incremental cache: file fingerprints and cached parse results."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,6 +10,15 @@ rust-version.workspace = true
 
 [dependencies]
 snowbros_core = { workspace = true }
+snowbros_parser = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+camino = { workspace = true }
+xxhash-rust = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
 
 [lints]
 workspace = true

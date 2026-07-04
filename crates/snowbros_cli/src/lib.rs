@@ -6,7 +6,7 @@
 //! output.
 
 mod commands;
-mod pipeline;
+pub mod pipeline;
 
 use std::process::ExitCode;
 
@@ -39,6 +39,14 @@ enum Command {
         /// above exist.
         #[arg(long)]
         ci: bool,
+        /// Ignore and don't write the incremental cache (force cold run).
+        #[arg(long)]
+        no_cache: bool,
+    },
+    /// Watch the project and print finding changes as they happen.
+    Watch {
+        /// Project root to watch (defaults to the current directory).
+        path: Option<camino::Utf8PathBuf>,
     },
     /// Export the project's semantic graph.
     Graph {
@@ -52,10 +60,23 @@ enum Command {
 
 /// Parses CLI arguments and runs the selected command.
 pub fn run() -> ExitCode {
+    // Observability: RUST_LOG=snowbros::cache=debug shows hit/miss
+    // decisions on stderr without touching report output on stdout.
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_writer(std::io::stderr)
+        .try_init();
+
     let cli = Cli::parse();
     let result = match cli.command {
         Command::Init { force } => commands::init::run(force),
-        Command::Analyze { path, format, ci } => commands::analyze::run(path, format, ci),
+        Command::Analyze {
+            path,
+            format,
+            ci,
+            no_cache,
+        } => commands::analyze::run(path, format, ci, no_cache),
+        Command::Watch { path } => commands::watch::run(path),
         Command::Graph { path, format } => commands::graph::run(path, format),
     };
     match result {

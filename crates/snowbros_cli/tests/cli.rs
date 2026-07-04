@@ -90,6 +90,86 @@ fn analyze_clean_project_reports_nothing() {
 }
 
 #[test]
+fn warm_run_output_identical_to_cold_run() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("a.ts"),
+        r#"import { b } from "./b"; export const a = 1;"#,
+    )
+    .unwrap();
+    std::fs::write(
+        dir.path().join("b.ts"),
+        r#"import { a } from "./a"; export const b = 2;"#,
+    )
+    .unwrap();
+
+    let cold = snowbros()
+        .current_dir(dir.path())
+        .args(["analyze", "--format", "json"])
+        .output()
+        .unwrap();
+    // Second run: everything served from cache.
+    let warm = snowbros()
+        .current_dir(dir.path())
+        .args(["analyze", "--format", "json"])
+        .output()
+        .unwrap();
+    // No-cache run: forced cold.
+    let no_cache = snowbros()
+        .current_dir(dir.path())
+        .args(["analyze", "--format", "json", "--no-cache"])
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        String::from_utf8_lossy(&cold.stdout),
+        String::from_utf8_lossy(&warm.stdout),
+        "warm run must be byte-identical to cold run"
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&cold.stdout),
+        String::from_utf8_lossy(&no_cache.stdout)
+    );
+}
+
+#[test]
+fn cache_picks_up_file_changes_and_deletions() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("main.ts"), "export const x = 1;").unwrap();
+    std::fs::write(dir.path().join("orphan.ts"), "export const o = 1;").unwrap();
+
+    // Prime the cache; orphan.ts reported as dead file.
+    snowbros()
+        .current_dir(dir.path())
+        .args(["analyze", "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("orphan.ts"));
+
+    // Change: main.ts now imports orphan → dead-file finding must vanish.
+    std::fs::write(
+        dir.path().join("main.ts"),
+        r#"import { o } from "./orphan"; export const x = o;"#,
+    )
+    .unwrap();
+    snowbros()
+        .current_dir(dir.path())
+        .args(["analyze", "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("graph/dead-file").not());
+
+    // Deletion: orphan.ts removed → its import becomes unresolved.
+    std::fs::remove_file(dir.path().join("orphan.ts")).unwrap();
+    snowbros()
+        .current_dir(dir.path())
+        .args(["analyze", "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("imports/unresolved-import"));
+}
+
+#[test]
 fn init_force_overwrites() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("snowbros.toml"), "# existing").unwrap();

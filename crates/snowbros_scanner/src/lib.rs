@@ -15,6 +15,7 @@ use snowbros_parser::Language;
 
 /// Directories never worth scanning, even without a `.gitignore`.
 const HARD_EXCLUDES: &[&str] = &[
+    ".snowbros",
     "node_modules",
     "target",
     "dist",

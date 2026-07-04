@@ -30,8 +30,13 @@ pub enum Format {
 /// Runs the analysis pipeline on `path` (defaults to cwd).
 ///
 /// With `ci`, exits with code 2 when any finding of severity High or
-/// above exists — the CI gate.
-pub fn run(path: Option<Utf8PathBuf>, format: Format, ci: bool) -> Result<ExitCode, String> {
+/// above exists — the CI gate. `no_cache` forces a cold run.
+pub fn run(
+    path: Option<Utf8PathBuf>,
+    format: Format,
+    ci: bool,
+    no_cache: bool,
+) -> Result<ExitCode, String> {
     let root = match path {
         Some(p) => p,
         None => Utf8PathBuf::from_path_buf(
@@ -40,7 +45,7 @@ pub fn run(path: Option<Utf8PathBuf>, format: Format, ci: bool) -> Result<ExitCo
         .map_err(|p| format!("non-UTF-8 working directory: {}", p.display()))?,
     };
 
-    let pipeline = pipeline::build(&root)?;
+    let pipeline = pipeline::build(&root, !no_cache)?;
 
     let ctx = AnalysisContext::new(
         &pipeline.graph,
@@ -71,6 +76,10 @@ fn print_terminal(root: &Utf8Path, file_count: usize, pipe: &pipeline::Pipeline,
     println!("{} {}", "SNOWBROS Inspector".bold(), "· analyze".dimmed());
     println!("  root: {root}");
     println!("  files scanned: {file_count}");
+    println!(
+        "  cache: {} reused, {} parsed",
+        pipe.cache_stats.hits, pipe.cache_stats.misses
+    );
     if pipe.frameworks.is_empty() {
         println!("  frameworks: none detected");
     } else {
