@@ -1,6 +1,6 @@
 [package]
-name = "snowbros_resolver"
-description = "Symbol and import resolution across modules."
+name = "snowbros_scanner"
+description = "Project file scanner: gitignore-aware walking and language tagging."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,8 +10,13 @@ rust-version.workspace = true
 
 [dependencies]
 snowbros_core = { workspace = true }
-camino = { workspace = true }
+snowbros_parser = { workspace = true }
 serde = { workspace = true }
+camino = { workspace = true }
+ignore = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
 
 [lints]
 workspace = true

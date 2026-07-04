@@ -15,6 +15,7 @@ rust-version = "1.85"
 snowbros_core = { path = "crates/snowbros_core" }
 snowbros_parser = { path = "crates/snowbros_parser" }
 snowbros_framework = { path = "crates/snowbros_framework" }
+snowbros_scanner = { path = "crates/snowbros_scanner" }
 snowbros_resolver = { path = "crates/snowbros_resolver" }
 snowbros_graph = { path = "crates/snowbros_graph" }
 snowbros_cache = { path = "crates/snowbros_cache" }
@@ -39,6 +40,7 @@ petgraph = "0.8"
 tree-sitter = "0.25"
 tree-sitter-javascript = "0.23"
 tree-sitter-typescript = "0.23"
+ignore = "0.4"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

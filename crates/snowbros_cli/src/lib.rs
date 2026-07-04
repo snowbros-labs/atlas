@@ -27,6 +27,14 @@ enum Command {
         #[arg(long)]
         force: bool,
     },
+    /// Analyze a project and report engineering issues.
+    Analyze {
+        /// Project root to analyze (defaults to the current directory).
+        path: Option<camino::Utf8PathBuf>,
+        /// Output format.
+        #[arg(long, value_enum, default_value = "terminal")]
+        format: commands::analyze::Format,
+    },
 }
 
 /// Parses CLI arguments and runs the selected command.
@@ -34,6 +42,7 @@ pub fn run() -> ExitCode {
     let cli = Cli::parse();
     let result = match cli.command {
         Command::Init { force } => commands::init::run(force),
+        Command::Analyze { path, format } => commands::analyze::run(path, format),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

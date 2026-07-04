@@ -41,6 +41,55 @@ fn init_refuses_overwrite_without_force() {
 }
 
 #[test]
+fn analyze_detects_circular_imports() {
+    let dir = tempfile::tempdir().unwrap();
+    let src = dir.path().join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(
+        src.join("a.ts"),
+        r#"import { b } from "./b"; export const a = 1;"#,
+    )
+    .unwrap();
+    std::fs::write(
+        src.join("b.ts"),
+        r#"import { a } from "./a"; export const b = 2;"#,
+    )
+    .unwrap();
+    std::fs::write(src.join("clean.ts"), "export const c = 3;").unwrap();
+
+    snowbros()
+        .current_dir(dir.path())
+        .args(["analyze", "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("graph/no-circular-imports"))
+        .stdout(predicate::str::contains("src/a.ts"))
+        .stdout(predicate::str::contains("src/b.ts"));
+}
+
+#[test]
+fn analyze_clean_project_reports_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("main.ts"),
+        r#"import { helper } from "./util"; helper();"#,
+    )
+    .unwrap();
+    std::fs::write(
+        dir.path().join("util.ts"),
+        "export const helper = () => {};",
+    )
+    .unwrap();
+
+    snowbros()
+        .current_dir(dir.path())
+        .args(["analyze", "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"total\": 0"));
+}
+
+#[test]
 fn init_force_overwrites() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("snowbros.toml"), "# existing").unwrap();
