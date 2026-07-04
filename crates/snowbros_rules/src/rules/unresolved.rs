@@ -78,7 +78,14 @@ mod tests {
                 span: span(),
             },
         ];
-        let ctx = AnalysisContext::new(&g, None, &[], &unresolved);
+        let ctx = AnalysisContext::new(
+            &g,
+            Default::default(),
+            crate::context::ContextInputs {
+                unresolved_imports: &unresolved,
+                ..Default::default()
+            },
+        );
         let diags = UnresolvedImports.run(&ctx);
         assert_eq!(diags.len(), 1);
         assert!(diags[0].message.contains("`./missing`"));
@@ -89,7 +96,11 @@ mod tests {
     #[test]
     fn empty_when_all_resolved() {
         let g = SemanticGraph::new();
-        let ctx = AnalysisContext::new(&g, None, &[], &[]);
+        let ctx = AnalysisContext::new(
+            &g,
+            Default::default(),
+            crate::context::ContextInputs::default(),
+        );
         assert!(UnresolvedImports.run(&ctx).is_empty());
     }
 }

@@ -23,8 +23,11 @@ pub fn builtin_rules() -> Vec<Box<dyn Rule>> {
     vec![
         Box::new(rules::circular::CircularImports),
         Box::new(rules::dead_files::DeadFiles),
+        Box::new(rules::forced_dynamic::ForcedDynamic),
         Box::new(rules::unresolved::UnresolvedImports),
         Box::new(rules::unused_deps::UnusedDependencies),
+        Box::new(rules::unused_env::UnusedEnvVars),
+        Box::new(rules::unused_export::UnusedExports),
     ]
 }
 

@@ -7,10 +7,12 @@
 //!
 //! oxc integration and the arena AST store land next.
 
+pub mod facts;
 pub mod imports;
 pub mod language;
 pub mod treesitter;
 
+pub use facts::{extract_facts, FileFacts, NamedItem};
 pub use imports::{extract_imports, Import, ImportKind};
 pub use language::Language;
 pub use treesitter::{parse, ParseError, ParsedFile};

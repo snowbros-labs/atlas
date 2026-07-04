@@ -8,13 +8,14 @@ use camino::Utf8PathBuf;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-use snowbros_parser::Import;
+use snowbros_parser::FileFacts;
 
 use crate::fingerprint::{hash_bytes, FileFingerprint};
 
 /// Bumped whenever the on-disk layout or cached data semantics change.
 /// A mismatch discards the cache wholesale.
-pub const CACHE_FORMAT_VERSION: u32 = 1;
+/// v2: entries store full [`FileFacts`] instead of just imports.
+pub const CACHE_FORMAT_VERSION: u32 = 2;
 
 /// Directory (under the project root) holding cache state.
 pub const CACHE_DIR: &str = ".snowbros";
@@ -28,11 +29,11 @@ pub struct FileEntry {
     pub fingerprint: FileFingerprint,
     /// xxh3 hash of the file content (hex).
     pub content_hash: String,
-    /// Extracted imports, or `None` when the file failed to parse (the
+    /// Extracted facts, or `None` when the file failed to parse (the
     /// failure reason is cached too, so broken files don't get re-parsed
     /// every run).
-    pub imports: Option<Vec<Import>>,
-    /// Parse/read failure message when `imports` is `None`.
+    pub facts: Option<FileFacts>,
+    /// Parse/read failure message when `facts` is `None`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub failure: Option<String>,
 }
@@ -153,14 +154,14 @@ impl CacheData {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snowbros_parser::{extract_imports, parse, Language};
+    use snowbros_parser::{extract_facts, parse, Language};
 
     fn entry_for(content: &str, abs: &Path) -> FileEntry {
         let parsed = parse(content.to_string(), Language::TypeScript).unwrap();
         FileEntry {
             fingerprint: FileFingerprint::read(abs).unwrap(),
             content_hash: hash_bytes(content.as_bytes()),
-            imports: Some(extract_imports(&parsed)),
+            facts: Some(extract_facts(&parsed)),
             failure: None,
         }
     }

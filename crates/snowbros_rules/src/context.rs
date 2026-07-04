@@ -1,11 +1,12 @@
 //! Read-only context handed to every rule.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use camino::Utf8PathBuf;
 use snowbros_core::Span;
 use snowbros_framework::{framework_packages, DetectedFramework, PackageJson};
 use snowbros_graph::SemanticGraph;
+use snowbros_parser::FileFacts;
 
 /// An import the resolver could not map to a project file or package.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,6 +17,28 @@ pub struct UnresolvedImport {
     pub specifier: String,
     /// Location of the specifier in the file.
     pub span: Span,
+}
+
+/// A resolved project-internal import with the names it binds.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportBinding {
+    /// Importing file (root-relative).
+    pub from: Utf8PathBuf,
+    /// Imported file (root-relative, resolved).
+    pub to: Utf8PathBuf,
+    /// Names bound (`default`, `*`, or named exports).
+    pub names: Vec<String>,
+}
+
+/// A variable declared in a root `.env*` file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnvDeclaration {
+    /// Variable name.
+    pub name: String,
+    /// Which env file declares it.
+    pub file: Utf8PathBuf,
+    /// 1-based line number of the declaration.
+    pub line: u32,
 }
 
 /// Everything a rule may look at. Strictly read-only.
@@ -31,6 +54,27 @@ pub struct AnalysisContext<'a> {
     pub framework_owned_packages: BTreeSet<String>,
     /// Imports the resolver could not map anywhere.
     pub unresolved_imports: &'a [UnresolvedImport],
+    /// Per-file extracted facts (exports, env reads, dynamic API calls).
+    pub file_facts: BTreeMap<Utf8PathBuf, FileFacts>,
+    /// Variables declared in root `.env*` files.
+    pub env_declarations: &'a [EnvDeclaration],
+    /// Resolved project-internal imports with bound names.
+    pub import_bindings: &'a [ImportBinding],
+}
+
+/// Inputs for building an [`AnalysisContext`].
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ContextInputs<'a> {
+    /// Parsed `package.json`, when the project has one.
+    pub package_json: Option<&'a PackageJson>,
+    /// Framework detection results.
+    pub frameworks: &'a [DetectedFramework],
+    /// Imports the resolver could not map anywhere.
+    pub unresolved_imports: &'a [UnresolvedImport],
+    /// Variables declared in root `.env*` files.
+    pub env_declarations: &'a [EnvDeclaration],
+    /// Resolved project-internal imports with bound names.
+    pub import_bindings: &'a [ImportBinding],
 }
 
 impl<'a> AnalysisContext<'a> {
@@ -38,20 +82,23 @@ impl<'a> AnalysisContext<'a> {
     /// detection results.
     pub fn new(
         graph: &'a SemanticGraph,
-        package_json: Option<&'a PackageJson>,
-        frameworks: &[DetectedFramework],
-        unresolved_imports: &'a [UnresolvedImport],
+        file_facts: BTreeMap<Utf8PathBuf, FileFacts>,
+        inputs: ContextInputs<'a>,
     ) -> Self {
-        let framework_owned_packages = frameworks
+        let framework_owned_packages = inputs
+            .frameworks
             .iter()
             .flat_map(|d| framework_packages(d.framework))
             .map(|s| s.to_string())
             .collect();
         Self {
             graph,
-            package_json,
+            package_json: inputs.package_json,
             framework_owned_packages,
-            unresolved_imports,
+            unresolved_imports: inputs.unresolved_imports,
+            file_facts,
+            env_declarations: inputs.env_declarations,
+            import_bindings: inputs.import_bindings,
         }
     }
 }

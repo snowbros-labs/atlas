@@ -15,7 +15,7 @@ use owo_colors::OwoColorize;
 
 use snowbros_core::Diagnostic;
 use snowbros_output::Report;
-use snowbros_rules::{run_all, AnalysisContext};
+use snowbros_rules::{run_all, AnalysisContext, ContextInputs};
 
 use crate::pipeline;
 
@@ -40,9 +40,14 @@ fn pass(root: &Utf8PathBuf) -> Result<(Report, String), String> {
     let pipe = pipeline::build(root, true)?;
     let ctx = AnalysisContext::new(
         &pipe.graph,
-        pipe.facts.package_json.as_ref(),
-        &pipe.frameworks,
-        &pipe.unresolved,
+        pipe.file_facts.clone(),
+        ContextInputs {
+            package_json: pipe.facts.package_json.as_ref(),
+            frameworks: &pipe.frameworks,
+            unresolved_imports: &pipe.unresolved,
+            env_declarations: &pipe.env_declarations,
+            import_bindings: &pipe.import_bindings,
+        },
     );
     let report = Report::new(run_all(&ctx));
     let stats = format!(

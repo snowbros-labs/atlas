@@ -21,7 +21,13 @@ use snowbros_core::{Confidence, Diagnostic, Severity};
 
 /// Categories always included in the overall score, even when clean.
 /// Grows as rule categories ship.
-pub const MONITORED_CATEGORIES: &[&str] = &["architecture", "dependencies", "imports"];
+pub const MONITORED_CATEGORIES: &[&str] = &[
+    "architecture",
+    "dependencies",
+    "environment",
+    "imports",
+    "performance",
+];
 
 /// Points deducted per finding of a severity.
 fn severity_weight(severity: Severity) -> f64 {

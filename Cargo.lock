@@ -1090,6 +1090,7 @@ dependencies = [
  "snowbros_core",
  "snowbros_framework",
  "snowbros_graph",
+ "snowbros_parser",
 ]
 
 [[package]]

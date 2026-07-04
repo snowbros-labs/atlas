@@ -9,6 +9,7 @@
 //! Parsing is file-parallel via rayon; collection preserves scan order,
 //! so output is deterministic under any thread scheduling.
 
+use std::collections::BTreeMap;
 use std::fs;
 
 use camino::Utf8PathBuf;
@@ -19,9 +20,9 @@ use snowbros_cache::FileFingerprint;
 use snowbros_cache::{config_fingerprint, hash_bytes, CacheData, CacheStats, FileEntry, Lookup};
 use snowbros_framework::{detect_frameworks, DetectedFramework, ProjectFacts};
 use snowbros_graph::{EdgeKind, Node, SemanticGraph};
-use snowbros_parser::{extract_imports, parse};
+use snowbros_parser::{extract_facts, parse, FileFacts};
 use snowbros_resolver::{resolve, FileSet, Resolution, TsPaths};
-use snowbros_rules::UnresolvedImport;
+use snowbros_rules::{EnvDeclaration, ImportBinding, UnresolvedImport};
 use snowbros_scanner::{scan, ScanResult};
 
 /// Everything the pipeline produces.
@@ -40,6 +41,45 @@ pub struct Pipeline {
     pub parse_failures: Vec<String>,
     /// Cache hit/miss counters for this run.
     pub cache_stats: CacheStats,
+    /// Per-file extracted facts (exports, env reads, dynamic API calls).
+    pub file_facts: BTreeMap<Utf8PathBuf, FileFacts>,
+    /// Variables declared in root `.env*` files.
+    pub env_declarations: Vec<EnvDeclaration>,
+    /// Resolved project-internal imports with the names they bind.
+    pub import_bindings: Vec<ImportBinding>,
+}
+
+/// Root env files considered declarations (`.env.example` is docs, not
+/// a declaration, and is deliberately excluded).
+const ENV_FILES: &[&str] = &[".env", ".env.local", ".env.development", ".env.production"];
+
+/// Parses `NAME=value` lines (with optional `export ` prefix) from the
+/// root `.env*` files.
+fn read_env_declarations(root: &Utf8PathBuf) -> Vec<EnvDeclaration> {
+    let mut out = Vec::new();
+    for file in ENV_FILES {
+        let Ok(text) = fs::read_to_string(root.join(file)) else {
+            continue;
+        };
+        for (idx, line) in text.lines().enumerate() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let line = line.strip_prefix("export ").unwrap_or(line);
+            if let Some((name, _)) = line.split_once('=') {
+                let name = name.trim();
+                if !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+                    out.push(EnvDeclaration {
+                        name: name.to_string(),
+                        file: Utf8PathBuf::from(*file),
+                        line: idx as u32 + 1,
+                    });
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Runs the pipeline on a project root. `use_cache: false` forces a
@@ -97,13 +137,13 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                                 Ok(parsed) => FileEntry {
                                     fingerprint,
                                     content_hash,
-                                    imports: Some(extract_imports(&parsed)),
+                                    facts: Some(extract_facts(&parsed)),
                                     failure: None,
                                 },
                                 Err(e) => FileEntry {
                                     fingerprint,
                                     content_hash,
-                                    imports: None,
+                                    facts: None,
                                     failure: Some(e.to_string()),
                                 },
                             }
@@ -111,7 +151,7 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                         Err(reason) => FileEntry {
                             fingerprint,
                             content_hash: String::new(),
-                            imports: None,
+                            facts: None,
                             failure: Some(reason),
                         },
                     };
@@ -130,6 +170,8 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
     let mut parse_failures = Vec::new();
     let mut stats = CacheStats::default();
     let mut next_cache = CacheData::empty(config_fp);
+    let mut file_facts: BTreeMap<Utf8PathBuf, FileFacts> = BTreeMap::new();
+    let mut import_bindings: Vec<ImportBinding> = Vec::new();
 
     for (path, entry, hit) in per_file {
         if hit {
@@ -138,13 +180,18 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
             stats.misses += 1;
         }
         let from_id = graph.add_node(Node::file(path.clone()));
-        match &entry.imports {
-            Some(imports) => {
-                for import in imports {
+        match &entry.facts {
+            Some(facts) => {
+                for import in &facts.imports {
                     match resolve(&path, &import.specifier, &file_set, &aliases) {
                         Resolution::Project(target) => {
-                            let to_id = graph.add_node(Node::file(target));
+                            let to_id = graph.add_node(Node::file(target.clone()));
                             graph.add_edge(from_id, to_id, EdgeKind::Imports);
+                            import_bindings.push(ImportBinding {
+                                from: path.clone(),
+                                to: target,
+                                names: import.names.clone(),
+                            });
                         }
                         Resolution::External(pkg) => {
                             let pkg_id = graph.add_node(Node::package(pkg, None));
@@ -166,6 +213,9 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                 }
             }
         }
+        if let Some(facts) = &entry.facts {
+            file_facts.insert(path.clone(), facts.clone());
+        }
         next_cache.files.insert(path, entry);
     }
 
@@ -181,6 +231,8 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
         "pipeline complete"
     );
 
+    let env_declarations = read_env_declarations(root);
+
     Ok(Pipeline {
         scanned,
         frameworks,
@@ -189,5 +241,8 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
         unresolved,
         parse_failures,
         cache_stats: stats,
+        file_facts,
+        env_declarations,
+        import_bindings,
     })
 }

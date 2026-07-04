@@ -62,7 +62,7 @@ const EXCLUDED_NAMES: &[&str] = &[
     "worker.js",
 ];
 
-fn is_excluded(path: &str) -> bool {
+pub(crate) fn is_excluded(path: &str) -> bool {
     // Config files: vite.config.ts, next.config.mjs, tailwind.config.js…
     let name = path.rsplit('/').next().unwrap_or(path);
     if name.contains(".config.") {
@@ -127,7 +127,11 @@ mod tests {
     use snowbros_graph::{Node, SemanticGraph};
 
     fn ctx_diags(g: &SemanticGraph) -> Vec<String> {
-        let ctx = AnalysisContext::new(g, None, &[], &[]);
+        let ctx = AnalysisContext::new(
+            g,
+            Default::default(),
+            crate::context::ContextInputs::default(),
+        );
         DeadFiles
             .run(&ctx)
             .into_iter()
@@ -169,7 +173,11 @@ mod tests {
     fn confidence_is_possible_severity_low() {
         let mut g = SemanticGraph::new();
         g.add_node(Node::file("src/orphan.ts"));
-        let ctx = AnalysisContext::new(&g, None, &[], &[]);
+        let ctx = AnalysisContext::new(
+            &g,
+            Default::default(),
+            crate::context::ContextInputs::default(),
+        );
         let diags = DeadFiles.run(&ctx);
         assert_eq!(diags[0].confidence, Confidence::Possible);
         assert_eq!(diags[0].severity, Severity::Low);

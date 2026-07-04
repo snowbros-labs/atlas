@@ -8,7 +8,7 @@ use owo_colors::OwoColorize;
 
 use snowbros_core::Severity;
 use snowbros_output::{html, json, markdown, sarif, Report};
-use snowbros_rules::{run_all, AnalysisContext};
+use snowbros_rules::{run_all, AnalysisContext, ContextInputs};
 
 use crate::pipeline;
 
@@ -49,9 +49,14 @@ pub fn run(
 
     let ctx = AnalysisContext::new(
         &pipeline.graph,
-        pipeline.facts.package_json.as_ref(),
-        &pipeline.frameworks,
-        &pipeline.unresolved,
+        pipeline.file_facts.clone(),
+        ContextInputs {
+            package_json: pipeline.facts.package_json.as_ref(),
+            frameworks: &pipeline.frameworks,
+            unresolved_imports: &pipeline.unresolved,
+            env_declarations: &pipeline.env_declarations,
+            import_bindings: &pipeline.import_bindings,
+        },
     );
     let report = Report::new(run_all(&ctx));
 

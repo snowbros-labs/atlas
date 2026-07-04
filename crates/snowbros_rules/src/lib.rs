@@ -13,7 +13,9 @@ pub mod context;
 pub mod registry;
 pub mod rules;
 
-pub use context::{AnalysisContext, UnresolvedImport};
+pub use context::{
+    AnalysisContext, ContextInputs, EnvDeclaration, ImportBinding, UnresolvedImport,
+};
 pub use registry::{builtin_rules, run_all, Rule};
 
 // Re-exported so every subsystem shares the same core vocabulary.

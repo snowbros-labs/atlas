@@ -42,6 +42,12 @@ pub struct Import {
     pub kind: ImportKind,
     /// Location of the specifier string in the source.
     pub span: Span,
+    /// Names bound from the module: named imports verbatim (the
+    /// *exported* name, so `{ a as b }` records `a`), `default` for a
+    /// default import, `*` for a namespace import. Empty for bare
+    /// imports, `require`, and dynamic `import()`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub names: Vec<String>,
 }
 
 impl Import {
@@ -59,16 +65,62 @@ pub fn extract_imports(parsed: &ParsedFile) -> Vec<Import> {
     imports
 }
 
+/// Collects the names bound by an import/re-export statement (see
+/// [`Import::names`] for the encoding).
+fn clause_names(stmt: Node<'_>, parsed: &ParsedFile) -> Vec<String> {
+    let mut names = Vec::new();
+    let mut cursor = stmt.walk();
+    for child in stmt.children(&mut cursor) {
+        match child.kind() {
+            "import_clause" => {
+                let mut c2 = child.walk();
+                for cc in child.children(&mut c2) {
+                    match cc.kind() {
+                        "identifier" => names.push("default".to_string()),
+                        "namespace_import" => names.push("*".to_string()),
+                        "named_imports" => {
+                            let mut c3 = cc.walk();
+                            for spec in cc.children(&mut c3) {
+                                if spec.kind() == "import_specifier" {
+                                    if let Some(n) = spec.child_by_field_name("name") {
+                                        names.push(parsed.text_of(n).to_string());
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            "export_clause" => {
+                let mut c2 = child.walk();
+                for spec in child.children(&mut c2) {
+                    if spec.kind() == "export_specifier" {
+                        if let Some(n) = spec.child_by_field_name("name") {
+                            names.push(parsed.text_of(n).to_string());
+                        }
+                    }
+                }
+            }
+            "*" => names.push("*".to_string()),
+            _ => {}
+        }
+    }
+    names
+}
+
 /// Depth-first walk collecting import-like constructs.
 fn walk(node: Node<'_>, parsed: &ParsedFile, out: &mut Vec<Import>) {
     match node.kind() {
         "import_statement" => {
-            if let Some(import) = string_field(node, "source", parsed, ImportKind::Static) {
+            if let Some(mut import) = string_field(node, "source", parsed, ImportKind::Static) {
+                import.names = clause_names(node, parsed);
                 out.push(import);
             }
         }
         "export_statement" => {
-            if let Some(import) = string_field(node, "source", parsed, ImportKind::ReExport) {
+            if let Some(mut import) = string_field(node, "source", parsed, ImportKind::ReExport) {
+                import.names = clause_names(node, parsed);
                 out.push(import);
             }
         }
@@ -133,6 +185,7 @@ fn string_literal(node: Node<'_>, parsed: &ParsedFile, kind: ImportKind) -> Opti
             node.start_byte() as u32,
             node.end_byte() as u32,
         ),
+        names: Vec::new(),
     })
 }
 

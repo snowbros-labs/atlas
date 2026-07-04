@@ -2,8 +2,11 @@
 
 pub mod circular;
 pub mod dead_files;
+pub mod forced_dynamic;
 pub mod unresolved;
 pub mod unused_deps;
+pub mod unused_env;
+pub mod unused_export;
 
 use snowbros_core::{Position, SourceLocation, Span};
 
