@@ -1,0 +1,20 @@
+id = "imports/unresolved-import"
+title = "Unresolved relative import"
+category = "imports"
+severity = "medium"
+confidence = "likely"
+maturity = "stable"
+description = "Detects relative import specifiers that match no project file after extension and index probing."
+rationale = "A relative import pointing at nothing is almost always a broken path or a deleted file, and will fail at build or runtime."
+recommendation = "Fix the path, restore the file, or remove the import."
+false_positives = "Targets generated at build time do not exist at analysis time — hence 'likely'. Alias and bare specifiers are deliberately excluded: an unconfigured alias usually means tsconfig knowledge the engine lacks, and guessing would produce noise."
+references = []
+tags = ["imports", "resolution"]
+
+[[bad_examples]]
+code = "import { gone } from './deleted-module'"
+note = "No file matches after probing ts/tsx/js/jsx/mjs/cjs/json and index files."
+
+[[good_examples]]
+code = "import { x } from '@unknown-alias/mod'"
+note = "Unknown aliases are 'don't know', never reported as broken."

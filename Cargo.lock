@@ -1087,10 +1087,12 @@ name = "snowbros_rules"
 version = "0.1.0"
 dependencies = [
  "camino",
+ "serde",
  "snowbros_core",
  "snowbros_framework",
  "snowbros_graph",
  "snowbros_parser",
+ "toml",
 ]
 
 [[package]]

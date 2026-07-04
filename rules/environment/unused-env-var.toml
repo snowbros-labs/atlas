@@ -1,0 +1,20 @@
+id = "env/unused-env-var"
+title = "Unused environment variable"
+category = "environment"
+severity = "low"
+confidence = "possible"
+maturity = "preview"
+description = "Detects variables declared in root .env files that no scanned file reads via process.env."
+rationale = "Dead configuration confuses deploys, hides which settings actually matter, and may keep stale secrets alive."
+recommendation = "Delete the declaration, or if a non-JS consumer (shell script, Docker, external service) reads it, ignore this finding."
+false_positives = "Shell scripts, Dockerfiles, and dynamic process.env[key] access are invisible — hence 'possible'. Framework-magic names (NODE_ENV, PORT, NEXT_*, VERCEL_*, TURBO_*) and Prisma's DATABASE_URL/DIRECT_URL are skipped. .env.example is treated as documentation, not declarations."
+references = []
+tags = ["configuration", "env"]
+
+[[bad_examples]]
+code = "GHOST_TOKEN=zzz # in .env, never read"
+note = "No process.env.GHOST_TOKEN anywhere."
+
+[[good_examples]]
+code = "NEXT_PUBLIC_URL=https://x.dev"
+note = "Framework-prefixed variables are consumed by the framework."

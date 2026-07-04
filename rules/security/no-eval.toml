@@ -1,0 +1,28 @@
+id = "security/no-eval"
+title = "Dynamic code execution"
+category = "security"
+severity = "high"
+confidence = "certain"
+maturity = "stable"
+description = "Detects eval(), window.eval(), globalThis.eval(), and new Function() call sites."
+rationale = "Executing strings as code is a primary vector for XSS and remote code execution, blocks Content Security Policy adoption, and defeats every form of static analysis."
+recommendation = "Use JSON.parse for data, explicit dispatch maps for dynamic behavior, or template engines for markup. If dynamic code is truly required, isolate it in a sandboxed worker."
+false_positives = "None known: the call site itself is proven. Whether attacker-controlled input reaches it is a separate taint question, which is why severity is high rather than critical."
+references = ["https://owasp.org/Top10/A03_2021-Injection/"]
+tags = ["owasp", "injection", "xss", "cwe-95"]
+
+[[bad_examples]]
+code = "eval(userInput)"
+note = "Direct code injection sink."
+
+[[bad_examples]]
+code = "const f = new Function('a', body)"
+note = "Function constructor executes its body string."
+
+[[good_examples]]
+code = "const data = JSON.parse(input)"
+note = "Parses data without executing it."
+
+[[good_examples]]
+code = "const evaluate = (x) => x * 2"
+note = "A local function named like eval is not eval."

@@ -14,6 +14,8 @@ snowbros_graph = { workspace = true }
 snowbros_framework = { workspace = true }
 snowbros_parser = { workspace = true }
 camino = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
 
 [lints]
 workspace = true

@@ -1,0 +1,20 @@
+id = "graph/dead-file"
+title = "Potentially dead file"
+category = "architecture"
+severity = "low"
+confidence = "possible"
+maturity = "preview"
+description = "Detects source files no other file imports."
+rationale = "Dead files rot: they still get maintained, reviewed, and shipped while serving no one."
+recommendation = "Delete the file, or if it is a legitimate entry point loaded by other means, ignore this finding (entry-point patterns are already excluded)."
+false_positives = "The graph cannot see runtime loading, HTML script tags, or tooling references — hence confidence 'possible'. Framework routes (app/, pages/, routes/), tests, configs, scripts, index/main files, and .d.ts are excluded by pattern."
+references = []
+tags = ["dead-code", "unused"]
+
+[[bad_examples]]
+code = "// src/lib/orphan.ts — exported helpers, zero importers"
+note = "No incoming import edge in the project graph."
+
+[[good_examples]]
+code = "// app/page.tsx — no importers, but file-system routed"
+note = "Framework entry points are excluded."

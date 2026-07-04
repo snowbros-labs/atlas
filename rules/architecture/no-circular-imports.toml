@@ -1,0 +1,20 @@
+id = "graph/no-circular-imports"
+title = "Circular import chain"
+category = "architecture"
+severity = "high"
+confidence = "certain"
+maturity = "stable"
+description = "Detects groups of files that import each other in a cycle, proven by Tarjan's strongly-connected-components algorithm on the import graph."
+rationale = "Cycles make modules impossible to test in isolation, can break tree-shaking, and cause undefined imports at runtime depending on module evaluation order."
+recommendation = "Break the cycle by extracting the shared piece into a module both sides import, or invert one dependency."
+false_positives = "None: a cycle in the resolved import graph is a mathematical fact. One finding is reported per cycle (the root cause), with every member listed as evidence."
+references = ["https://en.wikipedia.org/wiki/Circular_dependency"]
+tags = ["cycles", "coupling", "tarjan"]
+
+[[bad_examples]]
+code = "// a.ts\nimport { b } from './b'\n// b.ts\nimport { a } from './a'"
+note = "Two files importing each other."
+
+[[good_examples]]
+code = "// a.ts and b.ts both import shared.ts"
+note = "Shared code extracted; edges point one way."

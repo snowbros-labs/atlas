@@ -207,6 +207,27 @@ disable = ["graph/dead-file"]
 }
 
 #[test]
+fn explain_shows_rule_docs() {
+    snowbros()
+        .args(["explain", "security/no-eval"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("security/no-eval"))
+        .stdout(predicate::str::contains("FALSE POSITIVES"))
+        .stdout(predicate::str::contains("owasp.org"));
+}
+
+#[test]
+fn explain_unknown_rule_lists_available() {
+    snowbros()
+        .args(["explain", "nope/nothing"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unknown rule"))
+        .stderr(predicate::str::contains("graph/no-circular-imports"));
+}
+
+#[test]
 fn init_force_overwrites() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("snowbros.toml"), "# existing").unwrap();

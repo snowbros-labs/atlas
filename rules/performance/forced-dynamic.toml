@@ -1,0 +1,20 @@
+id = "next/forced-dynamic"
+title = "Dynamic rendering forced"
+category = "performance"
+severity = "info"
+confidence = "certain"
+maturity = "preview"
+description = "Detects calls to cookies(), headers(), draftMode() (next/headers) and noStore() (next/cache) that opt every route rendering the file out of static rendering."
+rationale = "Answers 'why is this page not static?' with the exact call site. Dynamic rendering disables full-route caching and adds per-request server work — often intentional, sometimes accidental."
+recommendation = "If the page should be static, read the dynamic value inside a smaller boundary (a Suspense-wrapped child component) instead of at the top of the route."
+false_positives = "None known: the call only counts when the name is imported from next/headers or next/cache — a local helper named cookies() does not trigger. Only runs on detected Next.js projects. Severity is info because forcing dynamic is frequently deliberate."
+references = ["https://nextjs.org/docs/app/building-your-application/rendering/server-components#dynamic-rendering"]
+tags = ["nextjs", "rendering", "caching"]
+
+[[bad_examples]]
+code = "import { cookies } from 'next/headers'\nexport default async function Page() { const jar = cookies() }"
+note = "Top-level cookies() makes the whole route dynamic."
+
+[[good_examples]]
+code = "function cookies() { return 1 } cookies()"
+note = "A local function named cookies is not the Next.js API."

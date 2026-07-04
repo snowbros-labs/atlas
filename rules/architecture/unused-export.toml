@@ -1,0 +1,20 @@
+id = "exports/unused-export"
+title = "Unused export"
+category = "architecture"
+severity = "low"
+confidence = "possible"
+maturity = "preview"
+description = "Detects exported names that no importer of the file ever binds."
+rationale = "Unused exports block tree-shaking, inflate bundles, and hide dead code behind a public-looking surface."
+recommendation = "Remove the export keyword (keep the code private) or delete the code if nothing uses it internally either."
+false_positives = "Public library APIs and tooling-consumed exports are invisible to the graph — hence confidence 'possible'. Namespace (* as ns), export *, and side-effect importers mark all exports used; entry points are excluded; unimported files are left to graph/dead-file."
+references = []
+tags = ["dead-code", "tree-shaking", "exports"]
+
+[[bad_examples]]
+code = "export const neverUsed = 42 // importers only bind other names"
+note = "Exported but never bound by any importer."
+
+[[good_examples]]
+code = "import * as util from './util' // marks every export used"
+note = "Namespace imports use everything."

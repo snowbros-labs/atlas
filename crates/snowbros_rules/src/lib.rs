@@ -11,6 +11,7 @@
 
 pub mod context;
 pub mod filter;
+pub mod metadata;
 pub mod registry;
 pub mod rules;
 
@@ -18,6 +19,7 @@ pub use context::{
     AnalysisContext, ContextInputs, EnvDeclaration, ImportBinding, UnresolvedImport,
 };
 pub use filter::apply_config;
+pub use metadata::{rule_metadata, Example, Maturity, RuleMetadata, METADATA};
 pub use registry::{builtin_rules, run_all, Rule};
 
 // Re-exported so every subsystem shares the same core vocabulary.

@@ -1,0 +1,20 @@
+id = "deps/unused-dependency"
+title = "Unused dependency"
+category = "dependencies"
+severity = "low"
+confidence = "likely"
+maturity = "stable"
+description = "Detects packages declared in package.json dependencies that no scanned file imports."
+rationale = "Unused dependencies slow installs, widen the supply-chain attack surface, and mislead readers about what the project actually uses."
+recommendation = "Remove the dependency, or move tool-only packages to devDependencies."
+false_positives = "Packages referenced from configs, CSS, or fields like prisma.seed have no import — hence 'likely', not certain. devDependencies are never checked, @types/* is skipped, and packages owned by a detected framework (react under the JSX auto-runtime, next via its CLI) are exempt."
+references = []
+tags = ["dependencies", "supply-chain"]
+
+[[bad_examples]]
+code = "\"lodash\": \"^4.17.21\" // in dependencies, never imported"
+note = "Declared but unused at runtime."
+
+[[good_examples]]
+code = "\"react\": \"^19.0.0\" // Next.js project, JSX auto-runtime"
+note = "Framework-owned packages are consumed implicitly."

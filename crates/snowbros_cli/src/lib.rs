@@ -48,6 +48,11 @@ enum Command {
         /// Project root to watch (defaults to the current directory).
         path: Option<camino::Utf8PathBuf>,
     },
+    /// Explain a rule: what it detects, why, and how to fix findings.
+    Explain {
+        /// Rule id, e.g. `security/no-eval`.
+        rule_id: String,
+    },
     /// Export the project's semantic graph.
     Graph {
         /// Project root (defaults to the current directory).
@@ -77,6 +82,7 @@ pub fn run() -> ExitCode {
             no_cache,
         } => commands::analyze::run(path, format, ci, no_cache),
         Command::Watch { path } => commands::watch::run(path),
+        Command::Explain { rule_id } => commands::explain::run(&rule_id),
         Command::Graph { path, format } => commands::graph::run(path, format),
     };
     match result {
