@@ -184,17 +184,15 @@ pub fn apply(root: &Utf8Path, fixes: &[PlannedFix], dry_run: bool) -> ApplyOutco
         }
 
         if applied_here > 0 && text != original {
-            if !dry_run {
-                if fs::write(&abs, &text).is_err() {
-                    // Roll the counters back: nothing was persisted.
-                    outcome.applied -= applied_here;
-                    for fix in batch {
-                        outcome
-                            .skipped
-                            .push((fix.clone(), "write failed".to_string()));
-                    }
-                    continue;
+            if !dry_run && fs::write(&abs, &text).is_err() {
+                // Roll the counters back: nothing was persisted.
+                outcome.applied -= applied_here;
+                for fix in batch {
+                    outcome
+                        .skipped
+                        .push((fix.clone(), "write failed".to_string()));
                 }
+                continue;
             }
             outcome.files_changed.push(file.clone());
         }
