@@ -78,6 +78,8 @@ pub struct RuleMetadata {
 const METADATA_SOURCES: &[&str] = &[
     include_str!("../../../rules/architecture/dead-file.toml"),
     include_str!("../../../rules/architecture/no-circular-imports.toml"),
+    include_str!("../../../rules/architecture/private-env-in-client.toml"),
+    include_str!("../../../rules/architecture/server-only-in-client.toml"),
     include_str!("../../../rules/architecture/unused-export.toml"),
     include_str!("../../../rules/dependencies/unused-dependency.toml"),
     include_str!("../../../rules/environment/unused-env-var.toml"),

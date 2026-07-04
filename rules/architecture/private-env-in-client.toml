@@ -1,0 +1,20 @@
+id = "next/private-env-in-client"
+title = "Private env var read in client component"
+category = "architecture"
+severity = "high"
+confidence = "likely"
+maturity = "preview"
+description = "Detects process.env reads without the NEXT_PUBLIC_ prefix inside \"use client\" files."
+rationale = "Next.js only inlines NEXT_PUBLIC_* variables into the browser bundle. Any other variable is undefined at runtime in the client — a silent bug, not a build error."
+recommendation = "Read the value in a server component and pass it down as a prop. Never fix this by adding NEXT_PUBLIC_ to a secret — that ships it to every browser."
+false_positives = "Custom bundler configuration can inline additional variables — hence 'likely'. NODE_ENV is exempt (Next inlines it everywhere)."
+references = ["https://nextjs.org/docs/app/building-your-application/configuring/environment-variables"]
+tags = ["nextjs", "env", "rsc"]
+
+[[bad_examples]]
+code = "\"use client\"\nconst url = process.env.API_SECRET_URL"
+note = "Undefined in the browser bundle."
+
+[[good_examples]]
+code = "\"use client\"\nconst url = process.env.NEXT_PUBLIC_API_URL"
+note = "Public variables are inlined by Next.js."

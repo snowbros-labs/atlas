@@ -1,0 +1,20 @@
+id = "next/server-only-in-client"
+title = "Server-only module reachable from client component"
+category = "architecture"
+severity = "high"
+confidence = "certain"
+maturity = "preview"
+description = "Detects \"use client\" files whose project import graph reaches a module importing the server-only marker package."
+rationale = "next build fails on this chain — the engine reports it in milliseconds, before the build, with the exact import path from the client component to the server-only module."
+recommendation = "Move the server-only logic behind a server component or server action, and pass data to the client component as props."
+false_positives = "None known: this reproduces exactly the check the server-only package enforces at build time, computed over the resolved import graph."
+references = ["https://nextjs.org/docs/app/building-your-application/rendering/composition-patterns#keeping-server-only-code-out-of-the-client-environment"]
+tags = ["nextjs", "rsc", "boundaries"]
+
+[[bad_examples]]
+code = "// widget.tsx: \"use client\" imports data.ts imports db.ts (imports \"server-only\")"
+note = "Transitive reach reported with the full chain."
+
+[[good_examples]]
+code = "// page.tsx (server component) imports db.ts freely"
+note = "Server code may use server-only modules."

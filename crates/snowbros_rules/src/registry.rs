@@ -21,6 +21,8 @@ pub trait Rule {
 /// All built-in rules, in stable id order.
 pub fn builtin_rules() -> Vec<Box<dyn Rule>> {
     vec![
+        Box::new(rules::boundary::PrivateEnvInClient),
+        Box::new(rules::boundary::ServerOnlyInClient),
         Box::new(rules::circular::CircularImports),
         Box::new(rules::dead_files::DeadFiles),
         Box::new(rules::forced_dynamic::ForcedDynamic),

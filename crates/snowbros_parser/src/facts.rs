@@ -27,6 +27,9 @@ pub struct NamedItem {
 pub struct FileFacts {
     /// Module references (see [`Import`]).
     pub imports: Vec<Import>,
+    /// Top-of-file directives: `use client` and/or `use server`.
+    #[serde(default)]
+    pub directives: Vec<String>,
     /// Names this file exports; `default` for a default export.
     pub exports: Vec<NamedItem>,
     /// `process.env.X` / `process.env["X"]` reads.
@@ -115,10 +118,45 @@ pub fn extract_facts(parsed: &ParsedFile) -> FileFacts {
 
     let mut facts = FileFacts {
         imports,
+        directives: leading_directives(parsed),
         ..FileFacts::default()
     };
     collect(parsed.tree.root_node(), parsed, &dynamic_names, &mut facts);
     facts
+}
+
+/// Reads the directive prologue: leading expression statements that are
+/// plain string literals (`"use client"`, `"use server"`). Stops at the
+/// first real statement.
+fn leading_directives(parsed: &ParsedFile) -> Vec<String> {
+    let mut directives = Vec::new();
+    let root = parsed.tree.root_node();
+    let mut cursor = root.walk();
+    for child in root.children(&mut cursor) {
+        if child.kind() == "comment" || child.kind() == "hash_bang_line" {
+            continue;
+        }
+        if child.kind() != "expression_statement" {
+            break;
+        }
+        let Some(expr) = child.named_child(0) else {
+            break;
+        };
+        if expr.kind() != "string" {
+            break;
+        }
+        let mut c2 = expr.walk();
+        let fragment = expr
+            .children(&mut c2)
+            .find(|c| c.kind() == "string_fragment");
+        if let Some(fragment) = fragment {
+            let text = parsed.text_of(fragment);
+            if text == "use client" || text == "use server" {
+                directives.push(text.to_string());
+            }
+        }
+    }
+    directives
 }
 
 /// Depth-first collection of exports, env reads, and dynamic API calls.
@@ -460,6 +498,22 @@ export function Page() { return cookies(); }
             Language::TypeScript,
         );
         assert!(without.dynamic_api_calls.is_empty());
+    }
+
+    #[test]
+    fn use_client_directive_detected() {
+        let facts = facts_of(
+            "\"use client\";\nimport { useState } from \"react\";\nexport const C = () => null;",
+            Language::Tsx,
+        );
+        assert_eq!(facts.directives, vec!["use client"]);
+
+        // A string later in the file is not a directive.
+        let none = facts_of(
+            "const x = 1;\nconst s = \"use client\";",
+            Language::TypeScript,
+        );
+        assert!(none.directives.is_empty());
     }
 
     #[test]
