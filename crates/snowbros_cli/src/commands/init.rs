@@ -2,6 +2,7 @@
 
 use std::fs;
 use std::path::Path;
+use std::process::ExitCode;
 
 use owo_colors::OwoColorize;
 use snowbros_core::Config;
@@ -9,7 +10,7 @@ use snowbros_core::Config;
 /// Writes `snowbros.toml` into the current directory.
 ///
 /// Refuses to overwrite an existing file unless `force` is set.
-pub fn run(force: bool) -> Result<(), String> {
+pub fn run(force: bool) -> Result<ExitCode, String> {
     let path = Path::new(Config::FILE_NAME);
     if path.exists() && !force {
         return Err(format!(
@@ -24,6 +25,6 @@ pub fn run(force: bool) -> Result<(), String> {
         "✓".green().bold(),
         Config::FILE_NAME.bold()
     );
-    println!("  next: run `snowbros analyze` (coming in Sprint 4)");
-    Ok(())
+    println!("  next: run `snowbros analyze`");
+    Ok(ExitCode::SUCCESS)
 }

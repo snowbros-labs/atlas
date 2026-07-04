@@ -68,7 +68,7 @@ mod tests {
         g.add_edge(b, a, EdgeKind::Imports);
         g.add_edge(a, c, EdgeKind::Imports);
 
-        let ctx = AnalysisContext::new(&g, None, &[]);
+        let ctx = AnalysisContext::new(&g, None, &[], &[]);
         let diags = CircularImports.run(&ctx);
         assert_eq!(diags.len(), 1);
         assert_eq!(diags[0].location.file, "src/a.ts");

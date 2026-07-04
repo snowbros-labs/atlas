@@ -127,7 +127,7 @@ mod tests {
     use snowbros_graph::{Node, SemanticGraph};
 
     fn ctx_diags(g: &SemanticGraph) -> Vec<String> {
-        let ctx = AnalysisContext::new(g, None, &[]);
+        let ctx = AnalysisContext::new(g, None, &[], &[]);
         DeadFiles
             .run(&ctx)
             .into_iter()
@@ -169,7 +169,7 @@ mod tests {
     fn confidence_is_possible_severity_low() {
         let mut g = SemanticGraph::new();
         g.add_node(Node::file("src/orphan.ts"));
-        let ctx = AnalysisContext::new(&g, None, &[]);
+        let ctx = AnalysisContext::new(&g, None, &[], &[]);
         let diags = DeadFiles.run(&ctx);
         assert_eq!(diags[0].confidence, Confidence::Possible);
         assert_eq!(diags[0].severity, Severity::Low);

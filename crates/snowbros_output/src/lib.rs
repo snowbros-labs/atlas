@@ -5,12 +5,12 @@
 //! output format. CLI, VS Code, dashboard, and CI all consume the same
 //! data.
 //!
-//! Sprint 4 scope: report model, JSON, Markdown. SARIF, HTML, and
-//! colored terminal output follow.
+//! Formats: JSON (canonical), Markdown, SARIF v2.1.0. HTML follows.
 
 pub mod json;
 pub mod markdown;
 pub mod report;
+pub mod sarif;
 
 pub use report::{Report, Summary};
 

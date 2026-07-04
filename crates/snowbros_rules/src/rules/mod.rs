@@ -2,6 +2,7 @@
 
 pub mod circular;
 pub mod dead_files;
+pub mod unresolved;
 pub mod unused_deps;
 
 use snowbros_core::{Position, SourceLocation, Span};

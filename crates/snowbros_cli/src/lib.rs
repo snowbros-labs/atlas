@@ -6,6 +6,7 @@
 //! output.
 
 mod commands;
+mod pipeline;
 
 use std::process::ExitCode;
 
@@ -34,6 +35,18 @@ enum Command {
         /// Output format.
         #[arg(long, value_enum, default_value = "terminal")]
         format: commands::analyze::Format,
+        /// CI gate: exit with code 2 when findings of severity High or
+        /// above exist.
+        #[arg(long)]
+        ci: bool,
+    },
+    /// Export the project's semantic graph.
+    Graph {
+        /// Project root (defaults to the current directory).
+        path: Option<camino::Utf8PathBuf>,
+        /// Export format.
+        #[arg(long, value_enum, default_value = "dot")]
+        format: commands::graph::GraphFormat,
     },
 }
 
@@ -42,10 +55,11 @@ pub fn run() -> ExitCode {
     let cli = Cli::parse();
     let result = match cli.command {
         Command::Init { force } => commands::init::run(force),
-        Command::Analyze { path, format } => commands::analyze::run(path, format),
+        Command::Analyze { path, format, ci } => commands::analyze::run(path, format, ci),
+        Command::Graph { path, format } => commands::graph::run(path, format),
     };
     match result {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(code) => code,
         Err(message) => {
             eprintln!("error: {message}");
             ExitCode::FAILURE

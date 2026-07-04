@@ -184,7 +184,7 @@ mod tests {
             ("lodash", "^4.17.21"),     // unused
             ("@types/node", "^22.0.0"), // skipped
         ]);
-        let ctx = AnalysisContext::new(&g, Some(&pkg), &[]);
+        let ctx = AnalysisContext::new(&g, Some(&pkg), &[], &[]);
         let diags = UnusedDependencies.run(&ctx);
         assert_eq!(diags.len(), 1);
         assert!(diags[0].message.contains("`lodash`"));
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn no_package_json_no_findings() {
         let g = SemanticGraph::new();
-        let ctx = AnalysisContext::new(&g, None, &[]);
+        let ctx = AnalysisContext::new(&g, None, &[], &[]);
         assert!(UnusedDependencies.run(&ctx).is_empty());
     }
 }
