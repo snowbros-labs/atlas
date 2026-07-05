@@ -73,11 +73,32 @@ pub fn resolve(from: &Utf8Path, specifier: &str, files: &FileSet, aliases: &TsPa
     Resolution::External(specifier.to_string())
 }
 
+/// TypeScript ESM extension substitution: a specifier written with a
+/// JS extension refers to the TS source that compiles to it. This is
+/// TypeScript's own resolution rule, not a heuristic.
+const ESM_SUBSTITUTIONS: &[(&str, &[&str])] = &[
+    (".js", &["ts", "tsx", "d.ts"]),
+    (".jsx", &["tsx"]),
+    (".mjs", &["mts", "d.mts"]),
+    (".cjs", &["cts", "d.cts"]),
+];
+
 /// Extension and index probing against the file set:
-/// exact → `x.{ts,tsx,…}` → `x/index.{ts,tsx,…}`.
+/// exact → ESM substitution (`x.js` → `x.ts`) → `x.{ts,tsx,…}` →
+/// `x/index.{ts,tsx,…}`.
 fn probe(target: &Utf8Path, files: &FileSet) -> Option<Utf8PathBuf> {
     if files.contains(target) {
         return Some(target.to_path_buf());
+    }
+    for (suffix, replacements) in ESM_SUBSTITUTIONS {
+        if let Some(stem) = target.as_str().strip_suffix(suffix) {
+            for ext in *replacements {
+                let candidate = Utf8PathBuf::from(format!("{stem}.{ext}"));
+                if files.contains(&candidate) {
+                    return Some(candidate);
+                }
+            }
+        }
     }
     for ext in EXTENSIONS {
         let candidate = Utf8PathBuf::from(format!("{target}.{ext}"));
@@ -132,6 +153,57 @@ mod tests {
                 &TsPaths::default()
             ),
             Resolution::Project("src/util.ts".into())
+        );
+    }
+
+    #[test]
+    fn esm_js_specifier_resolves_to_ts_source() {
+        let fs = files(&["src/app.ts", "src/util.ts"]);
+        assert_eq!(
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "./util.js",
+                &fs,
+                &TsPaths::default()
+            ),
+            Resolution::Project("src/util.ts".into())
+        );
+    }
+
+    #[test]
+    fn esm_substitution_prefers_real_js_file_when_present() {
+        let fs = files(&["src/app.ts", "src/util.js", "src/util.ts"]);
+        assert_eq!(
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "./util.js",
+                &fs,
+                &TsPaths::default()
+            ),
+            Resolution::Project("src/util.js".into())
+        );
+    }
+
+    #[test]
+    fn esm_jsx_and_mjs_substitutions() {
+        let fs = files(&["src/app.ts", "src/comp.tsx", "src/mod.mts"]);
+        assert_eq!(
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "./comp.jsx",
+                &fs,
+                &TsPaths::default()
+            ),
+            Resolution::Project("src/comp.tsx".into())
+        );
+        assert_eq!(
+            resolve(
+                Utf8Path::new("src/app.ts"),
+                "./mod.mjs",
+                &fs,
+                &TsPaths::default()
+            ),
+            Resolution::Project("src/mod.mts".into())
         );
     }
 
