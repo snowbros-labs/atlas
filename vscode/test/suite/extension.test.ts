@@ -1,6 +1,11 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { resolveExecutable, findOnPath, ResolveDeps } from "../../src/resolve";
+import {
+  resolveExecutable,
+  findOnPath,
+  needsShell,
+  ResolveDeps,
+} from "../../src/resolve";
 import { parseReport } from "../../src/commands";
 
 const EXT_ID = "snowbros.snowbros-atlas";
@@ -66,6 +71,23 @@ suite("resolveExecutable", () => {
   test("uses npx.cmd on windows fallback", () => {
     const r = resolveExecutable("", deps({ platform: "win32" }));
     assert.strictEqual(r.command, "npx.cmd");
+  });
+});
+
+suite("needsShell", () => {
+  test("wraps windows batch scripts (.cmd/.bat)", () => {
+    assert.strictEqual(needsShell("npx.cmd", "win32"), true);
+    assert.strictEqual(needsShell("C:\\bin\\sb.BAT", "win32"), true);
+  });
+
+  test("spawns real windows executables directly", () => {
+    assert.strictEqual(needsShell("C:\\bin\\sb.exe", "win32"), false);
+    assert.strictEqual(needsShell("sb", "win32"), false);
+  });
+
+  test("never uses the shell on posix", () => {
+    assert.strictEqual(needsShell("npx", "linux"), false);
+    assert.strictEqual(needsShell("sb.cmd", "linux"), false);
   });
 });
 

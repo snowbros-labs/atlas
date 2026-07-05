@@ -9,7 +9,7 @@ import {
 import type { Logger } from "./logger";
 import type { AtlasConfig } from "./config";
 import { rustLogFilter } from "./config";
-import { resolveExecutable, ResolveSource } from "./resolve";
+import { resolveExecutable, needsShell, ResolveSource } from "./resolve";
 
 export type ClientStatus = "starting" | "ready" | "stopped" | "error";
 
@@ -45,6 +45,10 @@ export class AtlasClient {
       transport: TransportKind.stdio,
       options: {
         env: rustLog ? { ...process.env, RUST_LOG: rustLog } : process.env,
+        // On Windows the npx fallback (`npx.cmd`) is a batch script; Node
+        // refuses to spawn one directly (EINVAL) since the CVE-2024-27980 fix,
+        // so route it through the shell. Real `sb.exe` binaries spawn directly.
+        shell: needsShell(res.command),
       },
     };
     this.log.info(`language server: ${res.command} (via ${res.source})`);

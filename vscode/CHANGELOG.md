@@ -4,7 +4,15 @@ All notable changes to the Snowbros Atlas VS Code extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] — Unreleased
+## [0.1.1]
+
+### Fixed
+
+- Windows: `spawn EINVAL` when starting the language server via the `npx`
+  fallback. Node refuses to spawn a `.cmd`/`.bat` batch script directly since
+  the CVE-2024-27980 fix, so `npx.cmd` is now run through the shell.
+
+## [0.1.0]
 
 ### Added
 

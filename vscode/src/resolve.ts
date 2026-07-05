@@ -95,3 +95,17 @@ export function resolveExecutable(
   const npx = deps.platform === "win32" ? "npx.cmd" : "npx";
   return { command: npx, baseArgs: ["--yes", "snowbros"], source: "npx" };
 }
+
+/**
+ * Whether a command must be spawned through a shell. Node's fix for
+ * CVE-2024-27980 rejects a direct `child_process.spawn` of a Windows batch
+ * script (`.cmd`/`.bat`, e.g. `npx.cmd`) with `EINVAL`; running it via the
+ * shell is the supported workaround. Only Windows batch scripts need this —
+ * real executables (`sb.exe`) and every POSIX command spawn directly.
+ */
+export function needsShell(
+  command: string,
+  platform: NodeJS.Platform = process.platform,
+): boolean {
+  return platform === "win32" && /\.(cmd|bat)$/i.test(command);
+}
