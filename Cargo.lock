@@ -1279,6 +1279,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ed6a63f02c8539c91a8685a86f4099661ba3da017932f6ebbea6de3f0fa7c90"
 
 [[package]]
+name = "snowbros"
+version = "0.1.0"
+dependencies = [
+ "assert_cmd",
+ "camino",
+ "clap",
+ "criterion",
+ "notify-debouncer-mini",
+ "owo-colors",
+ "predicates",
+ "serde_json",
+ "snowbros_core",
+ "snowbros_engine",
+ "snowbros_lsp",
+ "snowbros_output",
+ "snowbros_rules",
+ "tempfile",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "snowbros_architecture"
 version = "0.1.0"
 dependencies = [
@@ -1297,27 +1318,6 @@ dependencies = [
  "tempfile",
  "tracing",
  "xxhash-rust",
-]
-
-[[package]]
-name = "snowbros_cli"
-version = "0.1.0"
-dependencies = [
- "assert_cmd",
- "camino",
- "clap",
- "criterion",
- "notify-debouncer-mini",
- "owo-colors",
- "predicates",
- "serde_json",
- "snowbros_core",
- "snowbros_engine",
- "snowbros_lsp",
- "snowbros_output",
- "snowbros_rules",
- "tempfile",
- "tracing-subscriber",
 ]
 
 [[package]]

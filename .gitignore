@@ -2,3 +2,8 @@
 **/*.rs.bk
 *.pdb
 .DS_Store
+
+# npm wrapper artifacts
+npm/node_modules/
+npm/vendor/
+npm/*.tgz
