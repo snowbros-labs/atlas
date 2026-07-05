@@ -60,7 +60,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  await applyEnablement(config.enable);
+  // Under the extension test harness there is no real workspace or Atlas
+  // binary, so skip auto-starting the language server (it would try to resolve
+  // and spawn one, hanging activation). Commands and config stay registered.
+  if (context.extensionMode === vscode.ExtensionMode.Test) {
+    logger.info("test mode — language server auto-start disabled");
+    statusBar.set("ready");
+  } else {
+    await applyEnablement(config.enable);
+  }
 }
 
 /** Starts or stops the server to match the master enable + autoAnalyze flags. */

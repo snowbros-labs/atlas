@@ -3,7 +3,9 @@ import Mocha from "mocha";
 import { glob } from "glob";
 
 export async function run(): Promise<void> {
-  const mocha = new Mocha({ ui: "bdd", color: true, timeout: 20_000 });
+  // The test files use Mocha's TDD interface (suite/test), so the runner must
+  // load the matching UI — otherwise `suite` is undefined at file load time.
+  const mocha = new Mocha({ ui: "tdd", color: true, timeout: 20_000 });
   const testsRoot = path.resolve(__dirname, ".");
 
   const files = await glob("**/*.test.js", { cwd: testsRoot });
