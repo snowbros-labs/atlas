@@ -23,6 +23,7 @@ sb fix --dry-run             # preview deterministic auto-fixes
 sb fix                       # apply them (also: --rule ID, --file PATH)
 sb graph --format dot        # semantic graph for Graphviz
 sb explain security/no-eval  # full rule documentation
+sb lsp                       # LSP server over stdio (editor integration)
 ```
 
 The binary installs as both `snowbros` and the short alias `sb`.
@@ -45,7 +46,8 @@ edits — findings without a mechanical fix are reported, never guessed.
 | `snowbros_architecture` | Boundaries, layers, coupling, dead code |
 | `snowbros_performance` | Bundle size, complexity, health scoring |
 | `snowbros_plugin` | WASM + native plugin hosts |
-| `snowbros_lsp` | Language Server Protocol server |
+| `snowbros_engine` | Shared analysis engine (pipeline + rules + config) |
+| `snowbros_lsp` | Language Server Protocol server (tower-lsp, stdio) |
 | `snowbros_output` | SARIF, JSON, Markdown, HTML, terminal |
 | `snowbros_cli` | `snowbros` / `sb` binary |
 

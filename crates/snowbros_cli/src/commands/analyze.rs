@@ -6,11 +6,9 @@ use std::process::ExitCode;
 use camino::{Utf8Path, Utf8PathBuf};
 use owo_colors::OwoColorize;
 
-use snowbros_core::{Config, Severity};
+use snowbros_core::Severity;
+use snowbros_engine::Pipeline;
 use snowbros_output::{html, json, markdown, sarif, Report};
-use snowbros_rules::{apply_config, run_all, AnalysisContext, ContextInputs};
-
-use crate::pipeline;
 
 /// Output format for `analyze`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
@@ -45,21 +43,8 @@ pub fn run(
         .map_err(|p| format!("non-UTF-8 working directory: {}", p.display()))?,
     };
 
-    let pipeline = pipeline::build(&root, !no_cache)?;
-
-    let ctx = AnalysisContext::new(
-        &pipeline.graph,
-        pipeline.file_facts.clone(),
-        ContextInputs {
-            package_json: pipeline.facts.package_json.as_ref(),
-            frameworks: &pipeline.frameworks,
-            unresolved_imports: &pipeline.unresolved,
-            env_declarations: &pipeline.env_declarations,
-            import_bindings: &pipeline.import_bindings,
-        },
-    );
-    let config = load_config(&root)?;
-    let report = Report::new(apply_config(run_all(&ctx), &config));
+    let analysis = snowbros_engine::analyze(&root, !no_cache)?;
+    let (pipeline, report) = (analysis.pipeline, analysis.report);
 
     match format {
         Format::Json => println!("{}", json::render(&report)),
@@ -77,19 +62,8 @@ pub fn run(
     Ok(ExitCode::SUCCESS)
 }
 
-/// Loads `<root>/snowbros.toml`, or the defaults when absent. A present
-/// but invalid config is a hard error — silently ignoring it would make
-/// results differ from what the user configured.
-pub(crate) fn load_config(root: &Utf8Path) -> Result<Config, String> {
-    let path = root.join(Config::FILE_NAME);
-    if !path.exists() {
-        return Ok(Config::default());
-    }
-    Config::load(path.as_std_path()).map_err(|e| e.to_string())
-}
-
 /// Colored terminal rendering.
-fn print_terminal(root: &Utf8Path, file_count: usize, pipe: &pipeline::Pipeline, report: &Report) {
+fn print_terminal(root: &Utf8Path, file_count: usize, pipe: &Pipeline, report: &Report) {
     println!("{} {}", "SNOWBROS Inspector".bold(), "· analyze".dimmed());
     println!("  root: {root}");
     println!("  files scanned: {file_count}");

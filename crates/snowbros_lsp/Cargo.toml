@@ -10,6 +10,11 @@ rust-version.workspace = true
 
 [dependencies]
 snowbros_core = { workspace = true }
+snowbros_engine = { workspace = true }
+camino = { workspace = true }
+tracing = { workspace = true }
+tower-lsp = { workspace = true }
+tokio = { workspace = true }
 
 [lints]
 workspace = true

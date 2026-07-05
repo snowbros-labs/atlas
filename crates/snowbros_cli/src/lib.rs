@@ -7,7 +7,6 @@
 
 mod commands;
 mod fixers;
-pub mod pipeline;
 
 use std::process::ExitCode;
 
@@ -63,6 +62,8 @@ enum Command {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Start the Language Server Protocol server (stdio) for editors.
+    Lsp,
     /// Explain a rule: what it detects, why, and how to fix findings.
     Explain {
         /// Rule id, e.g. `security/no-eval`.
@@ -103,6 +104,7 @@ pub fn run() -> ExitCode {
             files,
             dry_run,
         } => commands::fix::run(path, rules, files, dry_run),
+        Command::Lsp => snowbros_lsp::run_stdio().map(|()| ExitCode::SUCCESS),
         Command::Explain { rule_id } => commands::explain::run(&rule_id),
         Command::Graph { path, format } => commands::graph::run(path, format),
     };

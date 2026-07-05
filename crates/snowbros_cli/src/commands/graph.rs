@@ -4,8 +4,6 @@ use std::process::ExitCode;
 
 use camino::Utf8PathBuf;
 
-use crate::pipeline;
-
 /// Graph export format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum GraphFormat {
@@ -22,7 +20,7 @@ pub fn run(path: Option<Utf8PathBuf>, format: GraphFormat) -> Result<ExitCode, S
         )
         .map_err(|p| format!("non-UTF-8 working directory: {}", p.display()))?,
     };
-    let pipeline = pipeline::build(&root, true)?;
+    let pipeline = snowbros_engine::pipeline::build(&root, true)?;
     match format {
         GraphFormat::Dot => print!("{}", pipeline.graph.to_dot()),
     }

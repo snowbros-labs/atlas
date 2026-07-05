@@ -9,11 +9,7 @@ use std::process::ExitCode;
 use camino::Utf8PathBuf;
 use owo_colors::OwoColorize;
 
-use snowbros_rules::{apply_config, run_all, AnalysisContext, ContextInputs};
-
-use crate::commands::analyze::load_config;
 use crate::fixers;
-use crate::pipeline;
 
 /// Runs analysis, plans fixes, and applies (or previews) them.
 ///
@@ -33,20 +29,8 @@ pub fn run(
         .map_err(|p| format!("non-UTF-8 working directory: {}", p.display()))?,
     };
 
-    let pipe = pipeline::build(&root, true)?;
-    let ctx = AnalysisContext::new(
-        &pipe.graph,
-        pipe.file_facts.clone(),
-        ContextInputs {
-            package_json: pipe.facts.package_json.as_ref(),
-            frameworks: &pipe.frameworks,
-            unresolved_imports: &pipe.unresolved,
-            env_declarations: &pipe.env_declarations,
-            import_bindings: &pipe.import_bindings,
-        },
-    );
-    let config = load_config(&root)?;
-    let mut diagnostics = apply_config(run_all(&ctx), &config);
+    let analysis = snowbros_engine::analyze(&root, true)?;
+    let mut diagnostics = analysis.report.diagnostics;
 
     // Scope filters.
     if !rules.is_empty() {

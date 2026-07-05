@@ -15,9 +15,6 @@ use owo_colors::OwoColorize;
 
 use snowbros_core::Diagnostic;
 use snowbros_output::Report;
-use snowbros_rules::{apply_config, run_all, AnalysisContext, ContextInputs};
-
-use crate::pipeline;
 
 /// Path segments whose events are never analysis-relevant.
 const IGNORED_SEGMENTS: &[&str] = &[".snowbros", ".git", "node_modules", "target", "dist"];
@@ -37,27 +34,14 @@ fn key(d: &Diagnostic) -> String {
 /// One analysis pass; returns the report and the cache stats line.
 fn pass(root: &Utf8PathBuf) -> Result<(Report, String), String> {
     let started = Instant::now();
-    let pipe = pipeline::build(root, true)?;
-    let ctx = AnalysisContext::new(
-        &pipe.graph,
-        pipe.file_facts.clone(),
-        ContextInputs {
-            package_json: pipe.facts.package_json.as_ref(),
-            frameworks: &pipe.frameworks,
-            unresolved_imports: &pipe.unresolved,
-            env_declarations: &pipe.env_declarations,
-            import_bindings: &pipe.import_bindings,
-        },
-    );
-    let config = crate::commands::analyze::load_config(root)?;
-    let report = Report::new(apply_config(run_all(&ctx), &config));
+    let analysis = snowbros_engine::analyze(root, true)?;
     let stats = format!(
         "{} reused, {} parsed, {} ms",
-        pipe.cache_stats.hits,
-        pipe.cache_stats.misses,
+        analysis.pipeline.cache_stats.hits,
+        analysis.pipeline.cache_stats.misses,
         started.elapsed().as_millis()
     );
-    Ok((report, stats))
+    Ok((analysis.report, stats))
 }
 
 fn print_finding(prefix: &str, d: &Diagnostic) {

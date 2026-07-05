@@ -26,6 +26,7 @@ snowbros_architecture = { path = "crates/snowbros_architecture" }
 snowbros_performance = { path = "crates/snowbros_performance" }
 snowbros_plugin = { path = "crates/snowbros_plugin" }
 snowbros_lsp = { path = "crates/snowbros_lsp" }
+snowbros_engine = { path = "crates/snowbros_engine" }
 snowbros_output = { path = "crates/snowbros_output" }
 
 # External
@@ -47,6 +48,8 @@ notify = "8"
 notify-debouncer-mini = "0.6"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tower-lsp = "0.20"
+tokio = { version = "1", features = ["rt-multi-thread", "io-std", "macros"] }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

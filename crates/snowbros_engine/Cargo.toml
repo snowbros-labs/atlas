@@ -1,0 +1,29 @@
+[package]
+name = "snowbros_engine"
+description = "Shared analysis engine: pipeline + rules + config, one entry point for CLI, LSP, and benches."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+snowbros_core = { workspace = true }
+snowbros_scanner = { workspace = true }
+snowbros_parser = { workspace = true }
+snowbros_resolver = { workspace = true }
+snowbros_graph = { workspace = true }
+snowbros_framework = { workspace = true }
+snowbros_rules = { workspace = true }
+snowbros_cache = { workspace = true }
+snowbros_output = { workspace = true }
+camino = { workspace = true }
+rayon = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

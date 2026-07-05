@@ -11,7 +11,7 @@ use std::path::Path;
 use camino::Utf8PathBuf;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
-use snowbros_cli::pipeline;
+use snowbros_engine::pipeline;
 
 /// Generates a synthetic TS project: `n` files in an import chain plus
 /// package imports — representative of parse + resolve + graph load.
