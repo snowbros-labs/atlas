@@ -41,7 +41,7 @@ cargo test --workspace
 ## Adding a rule
 
 1. Implement it in `crates/snowbros_rules`.
-2. Add metadata: `rules/<category>/<name>.toml` (embedded at compile time).
+2. Add metadata: `crates/snowbros_rules/rules/<category>/<name>.toml` (embedded at compile time).
    The test harness enforces 1:1 rule↔metadata mapping and metadata
    completeness — a missing file fails the build.
 3. Document false-positive guards in the metadata.

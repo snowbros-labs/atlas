@@ -12,22 +12,22 @@ rust-version = "1.85"
 
 [workspace.dependencies]
 # Internal crates
-snowbros_core = { path = "crates/snowbros_core" }
-snowbros_parser = { path = "crates/snowbros_parser" }
-snowbros_framework = { path = "crates/snowbros_framework" }
-snowbros_scanner = { path = "crates/snowbros_scanner" }
-snowbros_resolver = { path = "crates/snowbros_resolver" }
-snowbros_graph = { path = "crates/snowbros_graph" }
-snowbros_cache = { path = "crates/snowbros_cache" }
-snowbros_rules = { path = "crates/snowbros_rules" }
-snowbros_security = { path = "crates/snowbros_security" }
-snowbros_deps = { path = "crates/snowbros_deps" }
-snowbros_architecture = { path = "crates/snowbros_architecture" }
-snowbros_performance = { path = "crates/snowbros_performance" }
-snowbros_plugin = { path = "crates/snowbros_plugin" }
-snowbros_lsp = { path = "crates/snowbros_lsp" }
-snowbros_engine = { path = "crates/snowbros_engine" }
-snowbros_output = { path = "crates/snowbros_output" }
+snowbros_core = { path = "crates/snowbros_core", version = "0.1.0" }
+snowbros_parser = { path = "crates/snowbros_parser", version = "0.1.0" }
+snowbros_framework = { path = "crates/snowbros_framework", version = "0.1.0" }
+snowbros_scanner = { path = "crates/snowbros_scanner", version = "0.1.0" }
+snowbros_resolver = { path = "crates/snowbros_resolver", version = "0.1.0" }
+snowbros_graph = { path = "crates/snowbros_graph", version = "0.1.0" }
+snowbros_cache = { path = "crates/snowbros_cache", version = "0.1.0" }
+snowbros_rules = { path = "crates/snowbros_rules", version = "0.1.0" }
+snowbros_security = { path = "crates/snowbros_security", version = "0.1.0" }
+snowbros_deps = { path = "crates/snowbros_deps", version = "0.1.0" }
+snowbros_architecture = { path = "crates/snowbros_architecture", version = "0.1.0" }
+snowbros_performance = { path = "crates/snowbros_performance", version = "0.1.0" }
+snowbros_plugin = { path = "crates/snowbros_plugin", version = "0.1.0" }
+snowbros_lsp = { path = "crates/snowbros_lsp", version = "0.1.0" }
+snowbros_engine = { path = "crates/snowbros_engine", version = "0.1.0" }
+snowbros_output = { path = "crates/snowbros_output", version = "0.1.0" }
 
 # External
 serde = { version = "1", features = ["derive"] }

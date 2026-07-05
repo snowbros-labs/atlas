@@ -1,6 +1,6 @@
 //! Rule metadata: documentation, maturity, and examples for every rule.
 //!
-//! Metadata lives in TOML files under `rules/` at the repo root and is
+//! Metadata lives in TOML files under `rules/` in this crate and is
 //! embedded at compile time — the binary stays self-contained and the
 //! registry can never drift from the shipped rules (a test enforces
 //! 1:1 coverage).
@@ -76,17 +76,17 @@ pub struct RuleMetadata {
 
 /// The embedded metadata sources, one per shipped rule.
 const METADATA_SOURCES: &[&str] = &[
-    include_str!("../../../rules/architecture/dead-file.toml"),
-    include_str!("../../../rules/architecture/no-circular-imports.toml"),
-    include_str!("../../../rules/architecture/private-env-in-client.toml"),
-    include_str!("../../../rules/architecture/server-only-in-client.toml"),
-    include_str!("../../../rules/architecture/unused-export.toml"),
-    include_str!("../../../rules/dependencies/unused-dependency.toml"),
-    include_str!("../../../rules/environment/unused-env-var.toml"),
-    include_str!("../../../rules/imports/unresolved-import.toml"),
-    include_str!("../../../rules/performance/forced-dynamic.toml"),
-    include_str!("../../../rules/security/hardcoded-secret.toml"),
-    include_str!("../../../rules/security/no-eval.toml"),
+    include_str!("../rules/architecture/dead-file.toml"),
+    include_str!("../rules/architecture/no-circular-imports.toml"),
+    include_str!("../rules/architecture/private-env-in-client.toml"),
+    include_str!("../rules/architecture/server-only-in-client.toml"),
+    include_str!("../rules/architecture/unused-export.toml"),
+    include_str!("../rules/dependencies/unused-dependency.toml"),
+    include_str!("../rules/environment/unused-env-var.toml"),
+    include_str!("../rules/imports/unresolved-import.toml"),
+    include_str!("../rules/performance/forced-dynamic.toml"),
+    include_str!("../rules/security/hardcoded-secret.toml"),
+    include_str!("../rules/security/no-eval.toml"),
 ];
 
 /// Registry of all rule metadata, keyed by rule id.
