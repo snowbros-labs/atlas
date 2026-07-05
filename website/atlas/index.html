@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snowbros Atlas — deterministic static analysis for JavaScript & TypeScript</title>
+<meta name="description" content="Snowbros Atlas maps your whole JS/TS project and reports problems it can prove — circular imports, dead files, Next.js server/client leaks, unused deps, secrets. Deterministic, native-fast, evidence-first.">
+<link rel="canonical" href="https://snowbros.me/atlas/">
+<link rel="icon" href="logo.svg">
+<!-- Open Graph / social -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SNOWBROS">
+<meta property="og:title" content="Snowbros Atlas — deterministic static analysis for JS/TS">
+<meta property="og:description" content="Same code in, same findings out. Whole-project analysis for JavaScript/TypeScript with an evidence chain for every finding.">
+<meta property="og:url" content="https://snowbros.me/atlas/">
+<meta property="og:image" content="https://snowbros.me/atlas/og-image.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Snowbros Atlas — deterministic static analysis for JS/TS">
+<meta name="twitter:description" content="Whole-project analysis for JS/TS. Proven, not guessed. npx snowbros analyze">
+<meta name="twitter:image" content="https://snowbros.me/atlas/og-image.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Snowbros Atlas",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "macOS, Linux, Windows",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "url": "https://snowbros.me/atlas/",
+  "downloadUrl": "https://github.com/snowbros-labs/atlas",
+  "license": "https://spdx.org/licenses/MIT.html",
+  "description": "Deterministic static analysis for JavaScript and TypeScript projects."
+}
+</script>
+<style>
+  :root{
+    --bg:#0e1b17; --bg2:#0a1512; --panel:#12241f; --text:#f1f5f3; --muted:#8fb3a6;
+    --accent:#8fd8c0; --accent2:#b7e9d6; --high:#ff6b6b; --ok:#5fcf8e; --low:#6b7f78;
+    --border:#2e5147; --ink:#08130f;
+    --mono:ui-monospace,"Cascadia Code","JetBrains Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme:light){
+    :root{ --bg:#f8f9f8; --bg2:#eef4f1; --panel:#fff; --text:#16241f; --muted:#4d6b61;
+      --accent:#1f6f5c; --accent2:#24423a; --border:#d7e5df; --low:#6d8079; --ink:#fff; }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font:16px/1.65 system-ui,-apple-system,"Segoe UI",Inter,sans-serif;
+    background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+  a{color:var(--accent)}
+  header{display:flex;align-items:center;gap:.6rem;padding:1rem clamp(1rem,5vw,3rem);
+    border-bottom:1px solid var(--border);position:sticky;top:0;z-index:9;
+    background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px)}
+  header img{width:26px;height:26px}
+  header .brand{font-weight:800;letter-spacing:.02em}
+  header .brand span{font-weight:400;opacity:.6}
+  header nav{margin-left:auto;display:flex;gap:1.2rem}
+  header nav a{color:var(--muted);text-decoration:none;font-size:.94rem}
+  header nav a:hover{color:var(--accent)}
+  main{max-width:64rem;margin:0 auto;padding:3rem clamp(1rem,5vw,3rem) 4rem}
+  .eyebrow{color:var(--accent);font-family:var(--mono);font-size:.85rem;letter-spacing:.04em;text-transform:uppercase}
+  h1{font-size:clamp(2.1rem,5.4vw,3.3rem);line-height:1.1;letter-spacing:-.015em;margin:.6rem 0 .7rem}
+  .tagline{color:var(--muted);font-size:1.2rem;max-width:44rem}
+  .cta{display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;margin:2rem 0 1rem}
+  .btn{display:inline-flex;align-items:center;gap:.45rem;padding:.7rem 1.35rem;border-radius:9px;
+    text-decoration:none;font-weight:600;border:1px solid var(--border);cursor:pointer;
+    transition:transform .15s,background .15s,border-color .15s;font-size:1rem;color:var(--text);background:transparent}
+  .btn:hover{transform:translateY(-2px);border-color:var(--accent)}
+  .btn.primary{background:var(--accent);color:var(--ink);border-color:transparent}
+  .btn.primary:hover{background:var(--accent2)}
+  .copy{font-family:var(--mono);background:var(--panel);color:var(--text);border:1px solid var(--border);
+    border-radius:9px;padding:.7rem 1rem;font-size:.92rem;cursor:pointer;transition:border-color .15s}
+  .copy:hover{border-color:var(--accent)}
+  .copy .k{color:var(--accent)}
+  .copy .done{color:var(--ok)}
+  .pills{display:flex;flex-wrap:wrap;gap:.5rem;margin:1.3rem 0}
+  .pill{border:1px solid var(--border);border-radius:999px;padding:.3rem .85rem;font-size:.83rem;color:var(--muted);background:var(--panel)}
+  .hero-img{width:100%;margin:2.2rem 0 0;border-radius:14px;border:1px solid var(--border);display:block}
+  h2{margin:3rem 0 .3rem;font-size:1.5rem;border-bottom:1px solid var(--border);padding-bottom:.35rem}
+  .lead{color:var(--muted);max-width:44rem}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1rem;margin:1.6rem 0}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.2rem 1.3rem;transition:transform .18s,border-color .18s}
+  .card:hover{transform:translateY(-3px);border-color:var(--accent)}
+  .card h3{margin:0 0 .4rem;font-size:1.03rem}
+  .card p{margin:0;color:var(--muted);font-size:.93rem}
+  table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1.2rem 0}
+  th,td{text-align:left;padding:.55rem .9rem;border-bottom:1px solid var(--border);white-space:nowrap;font-size:.94rem}
+  th{color:var(--muted);font-weight:600}
+  td:first-child{font-weight:600}
+  .yes{color:var(--ok);font-weight:700}.no{color:var(--low)}
+  pre{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;overflow-x:auto;font-family:var(--mono);font-size:.88rem}
+  .shot{width:100%;border-radius:12px;border:1px solid var(--border);margin:1rem 0}
+  .install code{font-family:var(--mono);background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:.15em .45em;font-size:.86em}
+  footer{border-top:1px solid var(--border);color:var(--muted);font-size:.86rem;padding:1.8rem clamp(1rem,5vw,3rem);text-align:center}
+  footer a{color:var(--muted)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto}.card:hover,.btn:hover{transform:none}}
+</style>
+</head>
+<body>
+<header>
+  <img src="logo.svg" alt="">
+  <span class="brand">SNOWBROS <span>Atlas</span></span>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#compare">Compare</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com/snowbros-labs/atlas">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <p class="eyebrow">Deterministic engineering intelligence</p>
+  <h1>Same code in.<br>Same findings out.<br>Every time.</h1>
+  <p class="tagline">Snowbros Atlas maps your whole JavaScript/TypeScript project — every
+  import, export, env var, and framework boundary — and reports problems it can
+  <strong>prove</strong>, with the evidence attached. Native Rust. No AI in the loop.</p>
+
+  <div class="cta">
+    <a class="btn primary" href="#install">Get started</a>
+    <button class="copy" id="copy" type="button" aria-label="Copy install command">
+      <span class="k">$</span> npx snowbros analyze
+    </button>
+    <a class="btn" href="https://github.com/snowbros-labs/atlas">★ Star on GitHub</a>
+  </div>
+
+  <div class="pills">
+    <span class="pill">Deterministic · warm = cold</span>
+    <span class="pill">~34 ms per changed file</span>
+    <span class="pill">Evidence for every finding</span>
+    <span class="pill">CLI · CI (SARIF) · VS Code</span>
+    <span class="pill">MIT / Apache-2.0</span>
+  </div>
+
+  <img class="hero-img" src="terminal.svg" alt="sb analyze finds a server-only leak, a circular import, and a hardcoded secret — health 93 of 100">
+
+  <h2 id="features">Why Atlas</h2>
+  <p class="lead">Per-file linters can't see project structure — the import graph, the
+  framework boundaries, the manifest. That's exactly where the expensive, long-lived
+  bugs hide. Atlas works on that layer.</p>
+  <div class="cards">
+    <div class="card"><h3>Deterministic by construction</h3><p>No AI, no timestamps, no
+      network. Warm-cache output is byte-identical to a cold run — enforced by tests.</p></div>
+    <div class="card"><h3>Milliseconds, not minutes</h3><p>Rust + Tree-sitter + an
+      incremental cache: ~270 ms cold, ~34 ms after a one-file change on a 500-file repo.</p></div>
+    <div class="card"><h3>Evidence, not vibes</h3><p>Every finding carries the chain that
+      produced it and a confidence level. Anything unprovable is labeled unresolved — never guessed.</p></div>
+    <div class="card"><h3>Next.js boundary aware</h3><p>Catches <code>server-only</code>
+      code reaching client components through aliases and re-export chains, with the full path.</p></div>
+    <div class="card"><h3>Meets you everywhere</h3><p>Terminal, JSON, SARIF for GitHub code
+      scanning, self-contained HTML, a health scorecard, a built-in LSP, and a VS Code extension.</p></div>
+    <div class="card"><h3>Fixes it can prove</h3><p><code>sb fix</code> applies guarded,
+      idempotent edits for unused deps and env vars. Drifted files are skipped, not clobbered.</p></div>
+  </div>
+
+  <h2>The HTML report</h2>
+  <p class="lead"><code>sb analyze --format html</code> writes a self-contained, shareable
+  report — the health scorecard plus every finding and its evidence.</p>
+  <img class="shot" src="report.png" alt="Snowbros Atlas HTML report showing a health scorecard and findings">
+
+  <h2 id="compare">How it compares</h2>
+  <table>
+    <thead><tr><th>Capability</th><th>Atlas</th><th>ESLint</th><th>Knip</th><th>dep-cruiser</th></tr></thead>
+    <tbody>
+      <tr><td>Whole-project semantic graph</td><td class="yes">✓</td><td class="no">per-file</td><td class="no">partial</td><td class="yes">✓</td></tr>
+      <tr><td>Circular imports (cycle listed)</td><td class="yes">✓</td><td class="no">plugin</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>Dead files / unused exports</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">partial</td></tr>
+      <tr><td>Next.js server/client boundary</td><td class="yes">✓</td><td class="no">partial</td><td class="no">✗</td><td class="no">✗</td></tr>
+      <tr><td>Deterministic, evidence-first</td><td class="yes">✓</td><td class="no">mostly</td><td class="no">mostly</td><td class="no">mostly</td></tr>
+      <tr><td>SARIF · LSP · watch · scorecard</td><td class="yes">✓</td><td class="no">LSP only</td><td class="no">✗</td><td class="no">✗</td></tr>
+      <tr><td>Runtime</td><td class="yes">native</td><td class="no">Node</td><td class="no">Node</td><td class="no">Node</td></tr>
+    </tbody>
+  </table>
+  <p class="lead">Not a linter replacement — run Atlas <em>alongside</em> ESLint or Biome.
+  Its territory is project structure, not style.</p>
+
+  <h2 id="install">Install</h2>
+  <p class="lead install">Any one of these — all work today. No global install needed to try it.</p>
+  <pre># npm (recommended for JS/TS teams)
+npx snowbros analyze
+npm install -g @snowbros/atlas
+
+# Homebrew (macOS, Linux)
+brew install snowbros-labs/tap/snowbros-atlas
+
+# Cargo
+cargo install snowbros-atlas --locked
+
+# Shell (macOS, Linux)
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://github.com/snowbros-labs/atlas/releases/latest/download/snowbros-atlas-installer.sh | sh</pre>
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/snowbros-labs/atlas">Read the docs on GitHub</a>
+    <a class="btn" href="https://github.com/snowbros-labs/atlas/blob/master/docs/EXAMPLES.md">Real-world examples</a>
+    <a class="btn" href="https://github.com/snowbros-labs/atlas/blob/master/ROADMAP.md">Roadmap</a>
+  </div>
+</main>
+
+<footer>
+  <strong>Snowbros Atlas</strong> — a <a href="https://snowbros.me">SNOWBROS</a> project ·
+  MIT OR Apache-2.0 ·
+  <a href="https://github.com/snowbros-labs/atlas">GitHub</a> ·
+  <a href="https://github.com/snowbros-labs/atlas/discussions">Discussions</a>
+</footer>
+
+<script>
+  (function () {
+    var btn = document.getElementById("copy");
+    if (!btn) return;
+    var original = btn.innerHTML;
+    btn.addEventListener("click", function () {
+      navigator.clipboard.writeText("npx snowbros analyze").then(function () {
+        btn.innerHTML = '<span class="done">✓ copied</span>';
+        setTimeout(function () { btn.innerHTML = original; }, 1500);
+      });
+    });
+  })();
+</script>
+</body>
+</html>

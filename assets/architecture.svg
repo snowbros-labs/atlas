@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" role="img" aria-label="Crate architecture: layered dependencies from core up to cli and lsp">
+  <defs>
+    <style>
+      .ttl { font: 700 20px -apple-system,'Segoe UI',Inter,sans-serif; fill:#24423A; }
+      .cn  { font: 600 15px 'SF Mono','Cascadia Code',Consolas,monospace; fill:#24423A; }
+      .cd  { font: 400 12px -apple-system,'Segoe UI',Inter,sans-serif; fill:#6B7F78; }
+      .layer { fill:#EAF4EF; stroke:#8FD8C0; }
+      .top { fill:#24423A; }
+      .topn { font: 600 15px 'SF Mono','Cascadia Code',Consolas,monospace; fill:#F8F9F8; }
+    </style>
+  </defs>
+  <rect width="900" height="560" fill="#F8F9F8"/>
+  <text x="40" y="46" class="ttl">Crate architecture</text>
+  <text x="40" y="70" class="cd">Dependencies flow one direction — up from a shared vocabulary to the CLI and editor front-ends.</text>
+
+  <!-- cli / lsp -->
+  <g transform="translate(250,96)">
+    <rect width="180" height="56" rx="10" class="top"/>
+    <text x="90" y="27" text-anchor="middle" class="topn">snowbros (cli)</text>
+    <text x="90" y="45" text-anchor="middle" class="cd" fill="#8FD8C0">sb · snowbros</text>
+  </g>
+  <g transform="translate(470,96)">
+    <rect width="180" height="56" rx="10" class="top"/>
+    <text x="90" y="27" text-anchor="middle" class="topn">snowbros_lsp</text>
+    <text x="90" y="45" text-anchor="middle" class="cd" fill="#8FD8C0">sb lsp · editors</text>
+  </g>
+
+  <!-- engine -->
+  <g transform="translate(250,172)">
+    <rect width="400" height="52" rx="10" fill="#D6EDE3" stroke="#8FD8C0"/>
+    <text x="200" y="26" text-anchor="middle" class="cn">snowbros_engine</text>
+    <text x="200" y="43" text-anchor="middle" class="cd">one analyze() entry point — pipeline + rules + config</text>
+  </g>
+
+  <!-- rules + output -->
+  <g transform="translate(250,244)">
+    <rect width="190" height="52" rx="10" class="layer"/>
+    <text x="95" y="26" text-anchor="middle" class="cn">snowbros_rules</text>
+    <text x="95" y="43" text-anchor="middle" class="cd">registry · metadata</text>
+  </g>
+  <g transform="translate(460,244)">
+    <rect width="190" height="52" rx="10" class="layer"/>
+    <text x="95" y="26" text-anchor="middle" class="cn">snowbros_output</text>
+    <text x="95" y="43" text-anchor="middle" class="cd">terminal·json·sarif·html</text>
+  </g>
+
+  <!-- graph -->
+  <g transform="translate(250,316)">
+    <rect width="400" height="48" rx="10" class="layer"/>
+    <text x="200" y="24" text-anchor="middle" class="cn">snowbros_graph</text>
+    <text x="200" y="40" text-anchor="middle" class="cd">petgraph · SCC/cycles · reachability</text>
+  </g>
+
+  <!-- resolver + cache -->
+  <g transform="translate(250,384)">
+    <rect width="190" height="48" rx="10" class="layer"/>
+    <text x="95" y="24" text-anchor="middle" class="cn">snowbros_resolver</text>
+    <text x="95" y="40" text-anchor="middle" class="cd">tsconfig · aliases</text>
+  </g>
+  <g transform="translate(460,384)">
+    <rect width="190" height="48" rx="10" class="layer"/>
+    <text x="95" y="24" text-anchor="middle" class="cn">snowbros_cache</text>
+    <text x="95" y="40" text-anchor="middle" class="cd">xxh3 · incremental</text>
+  </g>
+
+  <!-- scanner/parser/framework -->
+  <g transform="translate(130,452)">
+    <rect width="170" height="48" rx="10" class="layer"/>
+    <text x="85" y="24" text-anchor="middle" class="cn">snowbros_scanner</text>
+    <text x="85" y="40" text-anchor="middle" class="cd">file walk</text>
+  </g>
+  <g transform="translate(320,452)">
+    <rect width="170" height="48" rx="10" class="layer"/>
+    <text x="85" y="24" text-anchor="middle" class="cn">snowbros_parser</text>
+    <text x="85" y="40" text-anchor="middle" class="cd">Tree-sitter · facts</text>
+  </g>
+  <g transform="translate(510,452)">
+    <rect width="170" height="48" rx="10" class="layer"/>
+    <text x="85" y="24" text-anchor="middle" class="cn">snowbros_framework</text>
+    <text x="85" y="40" text-anchor="middle" class="cd">detection</text>
+  </g>
+
+  <!-- core -->
+  <g transform="translate(130,520)">
+    <rect width="550" height="30" rx="8" fill="#24423A"/>
+    <text x="275" y="20" text-anchor="middle" class="topn">snowbros_core — Diagnostic · Severity · Confidence · Span · Config</text>
+  </g>
+</svg>

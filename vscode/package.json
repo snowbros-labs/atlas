@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "publisher": "snowbros-labs",
   "license": "MIT OR Apache-2.0",
-  "//icon": "TODO: export media/icon.svg to a 128x128 media/icon.png, then add: \"icon\": \"media/icon.png\". The Marketplace requires a PNG icon.",
+  "icon": "media/icon.png",
   "homepage": "https://github.com/snowbros-labs/atlas",
   "repository": {
     "type": "git",

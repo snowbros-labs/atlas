@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" role="img" aria-label="Terminal: sb analyze finds a server-only leak, a circular import, and a hardcoded secret; health 93 of 100">
+  <defs>
+    <style>
+      .m  { font: 400 15px 'SF Mono','Cascadia Code',Consolas,monospace; fill:#C9D6D0; }
+      .dim{ font: 400 15px 'SF Mono','Cascadia Code',Consolas,monospace; fill:#6B7F78; }
+      .mint{ font: 400 15px 'SF Mono','Cascadia Code',Consolas,monospace; fill:#8FD8C0; }
+      .bold{ font: 700 15px 'SF Mono','Cascadia Code',Consolas,monospace; fill:#F1F5F3; }
+      .red{ font: 700 15px 'SF Mono','Cascadia Code',Consolas,monospace; fill:#FF6B6B; }
+      .grn{ font: 700 15px 'SF Mono','Cascadia Code',Consolas,monospace; fill:#5FCF8E; }
+    </style>
+  </defs>
+  <rect width="900" height="560" rx="14" fill="#0E1B17"/>
+  <rect width="900" height="40" rx="14" fill="#12241F"/>
+  <rect y="26" width="900" height="14" fill="#12241F"/>
+  <circle cx="26" cy="20" r="6" fill="#FF6B6B"/>
+  <circle cx="48" cy="20" r="6" fill="#F4C15D"/>
+  <circle cx="70" cy="20" r="6" fill="#5FCF8E"/>
+  <text x="450" y="25" text-anchor="middle" class="dim">acme-web — sb analyze</text>
+
+  <g transform="translate(28,74)">
+    <text x="0" y="0"><tspan class="mint">$</tspan><tspan class="m" dx="8">npx snowbros analyze</tspan></text>
+
+    <text x="0" y="34"><tspan class="bold">Snowbros Atlas</tspan><tspan class="dim" dx="8">· analyze</tspan></text>
+    <text x="0" y="58" class="dim">  files scanned: 8   ·   next.js 15.1.0, react 19.0.0</text>
+
+    <text x="0" y="98"><tspan class="red">high</tspan><tspan class="bold" dx="10">Server-only module reachable from client component</tspan></text>
+    <text x="0" y="120" class="dim">     <tspan class="dim">[next/server-only-in-client]</tspan>  at src/components/Dashboard.tsx · certain</text>
+    <text x="0" y="142" class="mint">       └ Dashboard.tsx → lib/metrics.ts → lib/db.ts ("server-only")</text>
+
+    <text x="0" y="182"><tspan class="red">high</tspan><tspan class="bold" dx="10">Circular import chain</tspan></text>
+    <text x="0" y="204" class="dim">     <tspan class="dim">[graph/no-circular-imports]</tspan>  at src/lib/a.ts · certain</text>
+    <text x="0" y="226" class="mint">       └ src/lib/a.ts ⇄ src/lib/b.ts</text>
+
+    <text x="0" y="266"><tspan class="red">high</tspan><tspan class="bold" dx="10">Possible hardcoded secret</tspan></text>
+    <text x="0" y="288" class="dim">     <tspan class="dim">[security/hardcoded-secret]</tspan>  at src/lib/config.ts · likely</text>
+    <text x="0" y="310" class="mint">       └ known credential prefix; value redacted to `sk_l…`</text>
+
+    <text x="0" y="350" class="dim">low   Potentially dead file · Unused export      <tspan class="dim">(3 more)</tspan></text>
+
+    <text x="0" y="398"><tspan class="red">✗</tspan><tspan class="m" dx="8">6 finding(s): 3 high, 3 low</tspan></text>
+    <text x="0" y="428"><tspan class="grn">◆</tspan><tspan class="bold" dx="8">health: </tspan><tspan class="grn">93/100</tspan><tspan class="dim" dx="6">(architecture 66, security 90, imports 100, …)</tspan></text>
+
+    <text x="0" y="470"><tspan class="mint">$</tspan><tspan class="m" dx="8">sb explain next/server-only-in-client</tspan><tspan class="dim" dx="8">— why, and how to fix</tspan></text>
+  </g>
+</svg>

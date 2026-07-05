@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Snowbros Atlas Report</title><style>
+:root { color-scheme: light dark; }
+body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 60rem;
+       padding: 0 1rem; line-height: 1.5; }
+h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+.scores { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+.score { border: 1px solid #8884; border-radius: 8px; padding: 0.8rem 1.2rem;
+         min-width: 8rem; text-align: center; }
+.score .value { font-size: 1.8rem; font-weight: 700; display: block; }
+.score.good .value { color: #1a9c4b; }
+.score.ok .value { color: #c98a00; }
+.score.bad .value { color: #d43a3a; }
+.finding { border: 1px solid #8884; border-left-width: 5px; border-radius: 6px;
+           padding: 0.7rem 1rem; margin: 0.8rem 0; }
+.finding.critical, .finding.high { border-left-color: #d43a3a; }
+.finding.medium { border-left-color: #c98a00; }
+.finding.low, .finding.info { border-left-color: #8888; }
+.finding .meta { font-size: 0.85rem; opacity: 0.75; }
+.finding ul { margin: 0.4rem 0 0; padding-left: 1.2rem; font-size: 0.9rem; }
+.badge { display: inline-block; padding: 0.05rem 0.5rem; border-radius: 99px;
+         font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+         border: 1px solid #8886; }
+code { background: #8882; border-radius: 4px; padding: 0.1rem 0.3rem; }
+footer { margin-top: 3rem; font-size: 0.8rem; opacity: 0.6; }
+</style></head><body><h1>Snowbros Atlas Report</h1><p>6 findings · engine v0.1.0</p><h2>Health</h2><div class="scores"><div class="score good"><span class="value">93</span>overall</div><div class="score bad"><span class="value">66</span>architecture</div><div class="score good"><span class="value">100</span>dependencies</div><div class="score good"><span class="value">100</span>environment</div><div class="score good"><span class="value">100</span>imports</div><div class="score good"><span class="value">100</span>performance</div><div class="score good"><span class="value">90</span>security</div></div><h2>Findings</h2><div class="finding low"><span class="badge">low</span> <strong>Potentially dead file</strong> <code>graph/dead-file</code><div class="meta">src/components/Dashboard.tsx:1:1 · confidence: possible</div><p>`src/components/Dashboard.tsx` is not imported by any other file in the project. If it is not an entry point loaded by other means, it is dead code.</p><ul><li>no incoming import edges in the project graph</li></ul></div><div class="finding high"><span class="badge">high</span> <strong>Server-only module reachable from client component</strong> <code>next/server-only-in-client</code><div class="meta">src/components/Dashboard.tsx:1:1 · confidence: certain</div><p>`src/components/Dashboard.tsx` is a client component (&quot;use client&quot;) but its import graph reaches `src/lib/db.ts`, which imports `server-only`. `next build` will fail on this chain.</p><ul><li>import chain: src/components/Dashboard.tsx → src/lib/metrics.ts → src/lib/db.ts</li></ul></div><div class="finding high"><span class="badge">high</span> <strong>Circular import chain</strong> <code>graph/no-circular-imports</code><div class="meta">src/lib/a.ts:1:1 · confidence: certain</div><p>2 files import each other in a cycle. Cycles make modules impossible to test in isolation, can break tree-shaking, and cause undefined imports at runtime under some module orders.</p><ul><li>cycle member: src/lib/a.ts</li><li>cycle member: src/lib/b.ts</li></ul></div><div class="finding low"><span class="badge">low</span> <strong>Potentially dead file</strong> <code>graph/dead-file</code><div class="meta">src/lib/config.ts:1:1 · confidence: possible</div><p>`src/lib/config.ts` is not imported by any other file in the project. If it is not an entry point loaded by other means, it is dead code.</p><ul><li>no incoming import edges in the project graph</li></ul></div><div class="finding high"><span class="badge">high</span> <strong>Possible hardcoded secret</strong> <code>security/hardcoded-secret</code><div class="meta">src/lib/config.ts:1:24 · confidence: likely</div><p>`API_KEY` is assigned a literal that looks like a credential (`sk_l…`, 30 chars). Secrets in source end up in git history and every bundle. Move it to an environment variable and rotate the exposed value.</p><ul><li>the literal starts with a well-known credential prefix; value redacted to `sk_l…`</li></ul></div><div class="finding low"><span class="badge">low</span> <strong>Unused export</strong> <code>exports/unused-export</code><div class="meta">src/lib/db.ts:2:14 · confidence: possible</div><p>`DB_URL` is exported from `src/lib/db.ts` but no importer binds it. Unused exports block tree-shaking and hide dead code.</p><ul><li>1 file(s) import `src/lib/db.ts`, none bind `DB_URL`</li></ul></div><footer>Generated deterministically by Snowbros Atlas — same codebase, same report.</footer></body></html>

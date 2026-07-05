@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="360" viewBox="0 0 1000 360" role="img" aria-label="Rule engine: metadata and detector consume analysis facts and emit an evidence-backed diagnostic">
+  <defs>
+    <style>
+      .ttl { font: 700 20px -apple-system,'Segoe UI',Inter,sans-serif; fill:#24423A; }
+      .lbl { font: 600 15px -apple-system,'Segoe UI',Inter,sans-serif; fill:#24423A; }
+      .mono{ font: 500 13px 'SF Mono','Cascadia Code',Consolas,monospace; fill:#24423A; }
+      .cap { font: 400 12px -apple-system,'Segoe UI',Inter,sans-serif; fill:#6B7F78; }
+      .capl{ font: 400 12px 'SF Mono',Consolas,monospace; fill:#8FB3A6; }
+    </style>
+    <marker id="a2" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+      <path d="M0 0l6 3-6 3z" fill="#8FD8C0"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="360" fill="#F8F9F8"/>
+  <text x="40" y="46" class="ttl">Rule engine</text>
+  <text x="40" y="70" class="cap">A rule is a pure function from analysis facts to evidence-backed diagnostics — enforced 1:1 with its metadata.</text>
+
+  <!-- inputs -->
+  <g transform="translate(40,110)">
+    <rect width="240" height="70" rx="12" fill="#EAF4EF" stroke="#8FD8C0"/>
+    <text x="20" y="30" class="lbl">Metadata (TOML)</text>
+    <text x="20" y="52" class="capl">severity · confidence · guards</text>
+  </g>
+  <g transform="translate(40,206)">
+    <rect width="240" height="70" rx="12" fill="#EAF4EF" stroke="#8FD8C0"/>
+    <text x="20" y="30" class="lbl">Detector (Rust)</text>
+    <text x="20" y="52" class="capl">read-only · deterministic</text>
+  </g>
+
+  <!-- facts -->
+  <g transform="translate(360,150)">
+    <rect width="240" height="90" rx="12" fill="#D6EDE3" stroke="#8FD8C0"/>
+    <text x="120" y="34" text-anchor="middle" class="lbl">Analysis facts</text>
+    <text x="120" y="58" text-anchor="middle" class="cap">import graph · file facts</text>
+    <text x="120" y="76" text-anchor="middle" class="cap">frameworks · resolutions</text>
+  </g>
+
+  <line x1="280" y1="145" x2="356" y2="180" stroke="#8FD8C0" stroke-width="2" marker-end="url(#a2)"/>
+  <line x1="280" y1="241" x2="356" y2="210" stroke="#8FD8C0" stroke-width="2" marker-end="url(#a2)"/>
+  <line x1="600" y1="195" x2="676" y2="195" stroke="#8FD8C0" stroke-width="2" marker-end="url(#a2)"/>
+
+  <!-- diagnostic -->
+  <g transform="translate(680,120)">
+    <rect width="280" height="150" rx="12" fill="#24423A"/>
+    <text x="20" y="34" class="lbl" fill="#F8F9F8">Diagnostic</text>
+    <text x="20" y="62" class="capl">rule_id · severity · confidence</text>
+    <text x="20" y="86" class="capl">span → click to navigate</text>
+    <text x="20" y="112" class="lbl" fill="#8FD8C0">evidence chain</text>
+    <text x="20" y="134" class="capl">A.tsx → metrics.ts → db.ts</text>
+  </g>
+
+  <text x="40" y="320" class="cap">No finding ships without evidence. Anything the resolver cannot prove is reported as unresolved — never guessed.</text>
+</svg>

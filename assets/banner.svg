@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-label="Snowbros Atlas banner">
+  <defs>
+    <linearGradient id="bbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0E1B17"/>
+      <stop offset="1" stop-color="#24423A"/>
+    </linearGradient>
+    <style>
+      .bh { font: 700 52px -apple-system,'Segoe UI',Inter,sans-serif; fill:#F8F9F8; }
+      .bt { font: 400 24px -apple-system,'Segoe UI',Inter,sans-serif; fill:#B7C9C2; }
+      .bk { font: 600 20px 'SF Mono','Cascadia Code',Consolas,monospace; fill:#8FD8C0; }
+    </style>
+  </defs>
+  <rect width="1280" height="320" fill="url(#bbg)"/>
+  <g transform="translate(80,86) scale(6)">
+    <g stroke="#8FD8C0" stroke-width="1.4" stroke-linecap="round" fill="none">
+      <path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9"/>
+    </g>
+    <circle cx="12" cy="12" r="3" fill="#8FD8C0"/>
+  </g>
+  <text x="240" y="150" class="bh">Snowbros Atlas</text>
+  <text x="242" y="196" class="bt">The whole-project graph, boundaries, and manifest — proven, not guessed.</text>
+  <text x="242" y="244" class="bk">npx snowbros analyze</text>
+</svg>

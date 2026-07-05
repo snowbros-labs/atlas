@@ -1,0 +1,8 @@
+# Funding sources for Snowbros Atlas.
+# Uncomment and fill in once the corresponding account is set up. Leaving an
+# entry pointing at a non-existent account renders a broken "Sponsor" button,
+# so these stay commented until they are live.
+
+# github: [snowbros-labs]        # requires GitHub Sponsors enabled for the org
+# open_collective: snowbros-atlas
+# custom: ["https://snowbros.me/sponsor"]
