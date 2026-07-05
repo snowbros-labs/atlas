@@ -1,0 +1,165 @@
+{
+  "name": "atlas",
+  "displayName": "Snowbros Atlas",
+  "description": "Deterministic engineering intelligence for JavaScript/TypeScript — circular imports, dead files, Next.js boundary leaks, unused deps, and secrets, live in your editor.",
+  "version": "0.1.0",
+  "publisher": "snowbros-labs",
+  "license": "MIT OR Apache-2.0",
+  "//icon": "TODO: export media/icon.svg to a 128x128 media/icon.png, then add: \"icon\": \"media/icon.png\". The Marketplace requires a PNG icon.",
+  "homepage": "https://github.com/snowbros-labs/atlas",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/snowbros-labs/atlas.git",
+    "directory": "vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/snowbros-labs/atlas/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "atlas",
+    "snowbros",
+    "static analysis",
+    "typescript",
+    "javascript",
+    "circular imports",
+    "dead code",
+    "nextjs",
+    "lsp"
+  ],
+  "galleryBanner": {
+    "color": "#24423A",
+    "theme": "dark"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact",
+    "workspaceContains:**/snowbros.toml",
+    "workspaceContains:**/package.json"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "atlas.analyzeWorkspace",
+        "title": "Analyze Workspace",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.restart",
+        "title": "Restart Language Server",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.explainRule",
+        "title": "Explain Rule",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.openReport",
+        "title": "Open Report",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.showHealth",
+        "title": "Show Health Score",
+        "category": "Atlas"
+      },
+      {
+        "command": "atlas.clearCache",
+        "title": "Clear Cache",
+        "category": "Atlas"
+      }
+    ],
+    "configuration": {
+      "title": "Snowbros Atlas",
+      "properties": {
+        "atlas.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the Snowbros Atlas extension and language server."
+        },
+        "atlas.path": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the `sb` (or `snowbros`) executable. Leave empty to auto-detect on PATH, then fall back to `npx snowbros`.",
+          "scope": "machine-overridable"
+        },
+        "atlas.autoAnalyze": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start the language server automatically and analyze on open/save. When off, analysis runs only via the 'Atlas: Analyze Workspace' command."
+        },
+        "atlas.useCache": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use the incremental cache for report and health commands. The live language server always uses the cache."
+        },
+        "atlas.logLevel": {
+          "type": "string",
+          "enum": [
+            "off",
+            "error",
+            "info",
+            "debug",
+            "trace"
+          ],
+          "default": "info",
+          "description": "Verbosity of the Atlas output channel and the language server (RUST_LOG)."
+        },
+        "atlas.format": {
+          "type": "string",
+          "enum": [
+            "html",
+            "json",
+            "markdown",
+            "sarif"
+          ],
+          "default": "html",
+          "description": "Report format used by the 'Atlas: Open Report' command."
+        },
+        "atlas.enableStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the Atlas status bar item (Ready / Running / Error)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node esbuild.js --production",
+    "watch": "node esbuild.js --watch",
+    "compile-tests": "tsc -p . --outDir out-tests",
+    "lint": "eslint src --ext ts",
+    "check-types": "tsc --noEmit",
+    "test": "npm run compile-tests && node ./out-tests/test/runTest.js",
+    "package": "vsce package --no-dependencies -o snowbros-atlas.vsix"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/test-electron": "^2.3.9",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.20.0",
+    "eslint": "^8.56.0",
+    "glob": "^10.3.0",
+    "mocha": "^10.3.0",
+    "typescript": "^5.4.0"
+  }
+}
