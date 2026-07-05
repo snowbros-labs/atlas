@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Benchmarks — SNOWBROS Inspector</title>
+<title>Benchmarks — Snowbros Atlas</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <nav>
-  <span class="brand">SNOWBROS <span class="sub">Inspector</span></span>
+  <span class="brand">SNOWBROS <span class="sub">Atlas</span></span>
   <a href="index.html">Home</a>
   <a href="features.html">Features</a>
   <a href="installation.html">Install</a>
@@ -17,14 +17,14 @@
   <a href="benchmarks.html" class="active">Benchmarks</a>
   <a href="roadmap.html">Roadmap</a>
   <a href="contributing.html">Contributing</a>
-  <a href="https://github.com/snowbros/snowbros-inspector">GitHub</a>
+  <a href="https://github.com/snowbros/atlas">GitHub</a>
 </nav>
 <main>
   <h1>Benchmarks</h1>
 
   <h2>Real open-source repositories</h2>
   <p>Release build, Windows x64 laptop, July 2026. Full reports in
-  <a href="https://github.com/snowbros/snowbros-inspector/blob/master/docs/EXAMPLES.md">docs/EXAMPLES.md</a>.</p>
+  <a href="https://github.com/snowbros/atlas/blob/master/docs/EXAMPLES.md">docs/EXAMPLES.md</a>.</p>
   <table>
     <tr><th>Repository</th><th>Files</th><th>Cold</th><th>Warm</th><th>Findings</th><th>Health</th></tr>
     <tr><td>colinhacks/zod</td><td>554</td><td>~605 ms</td><td>~88 ms</td><td>126 (2 real import cycles)</td><td>83</td></tr>
@@ -52,8 +52,8 @@
   <pre><code>git clone --depth 1 https://github.com/axios/axios && cd axios
 sb analyze            # cold
 sb analyze            # warm
-cargo bench -p snowbros   # criterion suite (from the SNOWBROS repo)</code></pre>
+cargo bench -p snowbros-atlas   # criterion suite (from the atlas repo)</code></pre>
 </main>
-<footer>MIT OR Apache-2.0 · © 2026 SNOWBROS Inspector Contributors</footer>
+<footer>MIT OR Apache-2.0 · © 2026 Snowbros Atlas Contributors</footer>
 </body>
 </html>

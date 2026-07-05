@@ -23,14 +23,14 @@ function target(platform = process.platform, arch = process.arch) {
   return TARGETS[`${platform}-${arch}`] || null;
 }
 
-/** Archive file name for a target, e.g. `snowbros-x86_64-apple-darwin.tar.gz`. */
+/** Archive file name for a target, e.g. `snowbros-atlas-x86_64-apple-darwin.tar.gz`. */
 function archiveName(t) {
-  return `snowbros-${t.triple}${t.ext}`;
+  return `snowbros-atlas-${t.triple}${t.ext}`;
 }
 
 /** Download URL for a version + target. */
 function downloadUrl(version, t) {
-  const repo = "https://github.com/snowbros/snowbros-inspector";
+  const repo = "https://github.com/snowbros/atlas";
   return `${repo}/releases/download/v${version}/${archiveName(t)}`;
 }
 

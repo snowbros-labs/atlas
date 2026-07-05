@@ -1,14 +1,14 @@
 {
-  "name": "snowbros",
+  "name": "@snowbros/atlas",
   "version": "0.1.0",
   "description": "Deterministic engineering intelligence for JavaScript/TypeScript codebases.",
   "license": "MIT OR Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/snowbros/snowbros-inspector.git",
+    "url": "git+https://github.com/snowbros/atlas.git",
     "directory": "npm"
   },
-  "homepage": "https://github.com/snowbros/snowbros-inspector",
+  "homepage": "https://github.com/snowbros/atlas",
   "keywords": [
     "static-analysis",
     "linter",

@@ -64,7 +64,7 @@ pub fn run(
 
 /// Colored terminal rendering.
 fn print_terminal(root: &Utf8Path, file_count: usize, pipe: &Pipeline, report: &Report) {
-    println!("{} {}", "SNOWBROS Inspector".bold(), "· analyze".dimmed());
+    println!("{} {}", "Snowbros Atlas".bold(), "· analyze".dimmed());
     println!("  root: {root}");
     println!("  files scanned: {file_count}");
     println!(

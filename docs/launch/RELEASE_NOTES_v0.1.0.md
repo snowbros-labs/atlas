@@ -1,6 +1,6 @@
-# SNOWBROS Inspector v0.1.0 — first public release
+# Snowbros Atlas v0.1.0 — first public release
 
-SNOWBROS Inspector is a deterministic static-analysis engine for
+Snowbros Atlas is a deterministic static-analysis engine for
 JavaScript/TypeScript projects, written in Rust. It builds a semantic
 model of your whole project — files, imports, exports, environment
 variables, frameworks — and reports engineering problems with evidence.
@@ -32,8 +32,8 @@ loop; warm-cache runs are byte-identical to cold runs, proven by tests.
 
 ```sh
 npx snowbros analyze                     # npm / npx
-brew install snowbros/tap/snowbros       # Homebrew
-cargo install snowbros --locked          # from source
+brew install snowbros/tap/snowbros-atlas       # Homebrew
+cargo install snowbros-atlas --locked          # from source
 # shell / PowerShell installers + prebuilt archives on this release page
 ```
 

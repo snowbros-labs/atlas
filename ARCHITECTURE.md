@@ -1,4 +1,4 @@
-# SNOWBROS Inspector — Architecture Research & Design
+# Snowbros Atlas — Architecture Research & Design
 
 > **Role**: Chief Software Architect & Principal Compiler Engineer
 > **Status**: Research Complete — Awaiting Approval Before Implementation
@@ -7,7 +7,7 @@
 
 ## 1. Complete System Architecture
 
-SNOWBROS Inspector is a **high-performance, multi-language static analysis platform** built in Rust. The architecture draws from the best ideas in Biome, Oxc, rust-analyzer, Ruff, Semgrep, and CodeQL while creating a unique unified analysis engine.
+Snowbros Atlas is a **high-performance, multi-language static analysis platform** built in Rust. The architecture draws from the best ideas in Biome, Oxc, rust-analyzer, Ruff, Semgrep, and CodeQL while creating a unique unified analysis engine.
 
 ### High-Level Architecture Diagram
 
@@ -293,7 +293,7 @@ graph TB
 ## 7. Project Folder Structure
 
 ```
-snowbros-inspector/
+atlas/
 ├── Cargo.toml                    # Workspace root
 ├── snowbros.toml                 # Dog-food: our own config
 ├── LICENSE-MIT
@@ -940,8 +940,8 @@ graph LR
 | Channel | Method |
 |:---|:---|
 | **Binary** | GitHub Releases (via `cargo-dist` or `cross`) |
-| **Cargo** | `cargo install snowbros-inspector` |
-| **npm** | `npx snowbros-inspector` (via binary wrapper) |
+| **Cargo** | `cargo install atlas` |
+| **npm** | `npx atlas` (via binary wrapper) |
 | **Homebrew** | Custom tap |
 | **Docker** | Multi-arch image |
 | **VS Code** | Extension marketplace (WASM + native binary) |

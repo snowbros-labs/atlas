@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to SNOWBROS Inspector are documented here.
+All notable changes to Snowbros Atlas are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com) and the
 project adheres to [Semantic Versioning](https://semver.org).
 
@@ -9,7 +9,7 @@ project adheres to [Semantic Versioning](https://semver.org).
 
 ### Features
 
-- Bootstrap SNOWBROS Inspector workspace
+- Bootstrap Snowbros Atlas workspace
 - End-to-end analyze pipeline with first rule
 - Tsconfig path aliases and rule engine with three rules
 - Unresolved-import rule, SARIF output, CI gate, graph command
@@ -33,4 +33,5 @@ project adheres to [Semantic Versioning](https://semver.org).
 ### Documentation
 
 - Production README, install guide, contributing, releasing
+- Launch preparation — website, examples, assets, checklist
 

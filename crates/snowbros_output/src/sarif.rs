@@ -76,7 +76,7 @@ pub fn render(report: &Report) -> String {
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "SNOWBROS Inspector",
+                    "name": "Snowbros Atlas",
                     "informationUri": "https://snowbros.dev",
                     "version": report.engine_version,
                     "rules": rules,
@@ -127,7 +127,7 @@ mod tests {
         let sarif: serde_json::Value = serde_json::from_str(&render(&sample())).unwrap();
         assert_eq!(sarif["version"], "2.1.0");
         let run = &sarif["runs"][0];
-        assert_eq!(run["tool"]["driver"]["name"], "SNOWBROS Inspector");
+        assert_eq!(run["tool"]["driver"]["name"], "Snowbros Atlas");
         assert_eq!(run["results"].as_array().unwrap().len(), 2);
         assert_eq!(run["tool"]["driver"]["rules"].as_array().unwrap().len(), 2);
     }

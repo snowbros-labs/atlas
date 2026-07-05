@@ -23,15 +23,18 @@ security, ci
 
 ## Website / homepage field
 
-`https://snowbros.github.io/snowbros-inspector/` (GitHub Pages from the
-`website/` directory) — set after Pages is enabled.
+`https://snowbros.me` — the product page lives in the separate
+`snowbros/website` repository (built later). Until it's live, leave the
+homepage field empty or point it at the repository README. The
+`website/` directory in this repo is seed content for that site.
 
 ## Social preview image (1280×640)
 
-Spec for the repository social card (Settings → Social preview):
+Full design spec: [SOCIAL_PREVIEW_SPEC.md](SOCIAL_PREVIEW_SPEC.md).
+Summary for the repository social card (Settings → Social preview):
 
 - Background: deep navy (#0B1220), subtle dot grid.
-- Left 60%: wordmark "SNOWBROS Inspector" in bold geometric sans
+- Left 60%: wordmark "Snowbros Atlas" in bold geometric sans
   (e.g. Inter 800), white; below it the tagline in #8FA3BF:
   "Same code in. Same findings out. Every time."
 - Right 40%: stylized terminal window showing three findings lines
@@ -44,16 +47,18 @@ Spec for the repository social card (Settings → Social preview):
 
 Until a designed logo exists, the wordmark is the logo:
 
-- Wordmark: "SNOWBROS" in Inter 800 (or system geometric sans), tracking
-  +2%, either white on navy (#0B1220) or navy on white. "Inspector" in
-  regular weight, 60% opacity, after a space.
+- Hierarchy lockup: company eyebrow "SNOWBROS" (small, tracking +8%,
+  muted #8FA3BF) above the product wordmark "Atlas" (Inter 800, white on
+  navy #0B1220, or navy on white). Full spec:
+  [SOCIAL_PREVIEW_SPEC.md](SOCIAL_PREVIEW_SPEC.md).
 - Glyph (favicon/avatar): a snowflake-in-hexagon monogram, single color.
   Use ❄ inside a hexagon outline as an interim avatar.
 - Don't: stretch, recolor per-letter, place on busy imagery, or attach
   taglines other than the official one.
-- Clear space: at least the height of the "S" on all sides.
-- The name is always written SNOWBROS (caps) in headings, `snowbros` in
-  code/package contexts.
+- Clear space: at least the height of the "A" in Atlas on all sides.
+- Naming rules: company is SNOWBROS (caps); the product is always
+  "Snowbros Atlas" in prose — never bare "Snowbros"; `sb` is the CLI;
+  packages are `@snowbros/atlas` (npm) and `snowbros-atlas` (crates.io).
 
 ## Elevator one-liner (everywhere)
 

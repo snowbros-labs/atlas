@@ -1,6 +1,6 @@
 //! Cold vs warm pipeline benchmarks on a generated synthetic project.
 //!
-//! Run with `cargo bench -p snowbros`.
+//! Run with `cargo bench -p snowbros-atlas`.
 
 // criterion macros generate undocumented items.
 #![allow(missing_docs)]

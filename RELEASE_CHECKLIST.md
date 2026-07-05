@@ -4,20 +4,18 @@ Work top to bottom. Nothing below "Tag and release" happens until every
 box above it is checked. Companion docs: [RELEASING.md](RELEASING.md)
 (mechanics), [docs/launch/](docs/launch/) (copy + assets).
 
-## 1. Identity (one-time, blocking)
+## 1. Identity (decided — see docs/launch/NAMING.md)
 
-- [ ] Decide the final GitHub org/repo name. Current placeholder:
-      `snowbros/snowbros-inspector`.
-- [ ] If it differs, replace the URL everywhere:
-      `git grep -l "snowbros/snowbros-inspector"` →
-      `Cargo.toml`, `crates/snowbros_cli/Cargo.toml`, `npm/package.json`,
-      `npm/lib/platform.js`, `npm/test/wrapper.test.js`, `npm/README.md`,
-      `README.md`, `docs/*`, `RELEASING.md`, `CONTRIBUTING.md`,
-      `website/*.html`, `docs/launch/*`.
-- [ ] Verify npm name `snowbros` is available (`npm view snowbros`);
-      if taken, rename npm package + wrapper URLs + docs.
-- [ ] Verify crates.io name `snowbros` is available; if taken, adjust
-      `[package] name` and `cargo install` docs.
+- [x] Names finalized 2026-07-05: company SNOWBROS, product Snowbros
+      Atlas, CLI `sb`, repo `snowbros/atlas`, npm `@snowbros/atlas`
+      (+ unscoped `snowbros` alias), crates.io `snowbros-atlas`.
+- [x] Availability verified 2026-07-05: npm `snowbros` and scope
+      `@snowbros` free; crates.io `snowbros`, `snowbros-atlas`,
+      `snowbros_core` free.
+- [ ] Register the npm org `snowbros` (claims the scope) before anyone
+      else does — do this immediately.
+- [ ] Re-check both registries right before publishing (names are
+      first-come-first-served).
 
 ## 2. GitHub repository setup
 
@@ -26,8 +24,8 @@ box above it is checked. Companion docs: [RELEASING.md](RELEASING.md)
 - [ ] Set repository description and topics
       (copy from [docs/launch/LAUNCH_ASSETS.md](docs/launch/LAUNCH_ASSETS.md)).
 - [ ] Upload social preview image (spec in LAUNCH_ASSETS.md).
-- [ ] Enable GitHub Pages → deploy from `website/` (or `docs/` branch
-      strategy); set the homepage field to the Pages URL.
+- [ ] Product site: separate `snowbros/website` repo (snowbros.me), seeded
+      from this repo's `website/` directory — not part of this launch.
 - [ ] Create `snowbros/homebrew-tap` repo (empty, with `Formula/` dir).
 - [ ] Add repo secret `HOMEBREW_TAP_TOKEN` (write access to the tap).
 - [ ] Branch protection on the default branch: require CI green.
@@ -38,7 +36,7 @@ box above it is checked. Companion docs: [RELEASING.md](RELEASING.md)
 - [ ] `cargo clippy --workspace --all-targets -- -D warnings`
 - [ ] `cargo test --workspace` — all pass, no ignored regressions
 - [ ] `(cd npm && npm test)` — 7/7
-- [ ] `cargo bench -p snowbros` — numbers within expected range
+- [ ] `cargo bench -p snowbros-atlas` — numbers within expected range
       (cold ~162 ms / warm ~5 ms @ 200 files; investigate >2× drift)
 - [ ] `dist plan` succeeds; `dist generate --check` clean
 - [ ] cargo-deny green (CI `deny` job)
@@ -74,21 +72,21 @@ box above it is checked. Companion docs: [RELEASING.md](RELEASING.md)
 ## 7. Publish channels
 
 - [ ] Homebrew: formula landed in the tap;
-      `brew install snowbros/tap/snowbros && sb --version` on macOS and
+      `brew install snowbros/tap/snowbros-atlas && sb --version` on macOS and
       Linux
-- [ ] npm: `cd npm && npm publish` (2FA ready);
+- [ ] npm: `cd npm && npm publish --access public` (2FA ready), then the unscoped `snowbros` alias;
       `npx snowbros@0.1.0 --version` on all three OSes
 - [ ] crates.io: publish workspace crates in dependency order, ending
-      with `cargo publish -p snowbros`;
-      then `cargo install snowbros --locked && sb --version`
+      with `cargo publish -p snowbros-atlas`;
+      then `cargo install snowbros-atlas --locked && sb --version`
 - [ ] Installer smoke tests:
-      - Windows: `irm .../snowbros-installer.ps1 | iex; sb --version`
-      - macOS/Linux: `curl -LsSf .../snowbros-installer.sh | sh; sb --version`
+      - Windows: `irm .../snowbros-atlas-installer.ps1 | iex; sb --version`
+      - macOS/Linux: `curl -LsSf .../snowbros-atlas-installer.sh | sh; sb --version`
 - [ ] Checksums verify: `sha256sum -c <archive>.sha256`
 
 ## 8. Launch
 
-- [ ] Record the 90-second demo (script in docs/launch/MARKETING.md);
+- [ ] Record the 90-second demo (full plan in docs/launch/DEMO_PLAN.md);
       replace the README GIF placeholder with the real capture
 - [ ] Post: GitHub announcement → HN (Show HN) → Reddit → X thread →
       LinkedIn → Product Hunt (copy in MARKETING.md; spread over 2–3 days)
@@ -100,5 +98,5 @@ box above it is checked. Companion docs: [RELEASING.md](RELEASING.md)
 - [ ] Enable GitHub issue templates (bug / FP report / rule idea)
 - [ ] Pin a "roadmap + known limitations" issue (content: website/roadmap
       + docs/EXAMPLES.md limitations)
-- [ ] Add SECURITY.md with a private-report channel before announcing to
+- [x] SECURITY.md added; create the security@snowbros.me mailbox before announcing to
       security-focused audiences

@@ -1,8 +1,8 @@
-# SNOWBROS Inspector — Master Project Context
+# Snowbros Atlas — Master Project Context
 
 ## Mission
 
-We are building **SNOWBROS Inspector**, an engineering intelligence platform.
+We are building **Snowbros Atlas**, an engineering intelligence platform.
 
 This is **NOT** another AI code reviewer.
 
@@ -26,7 +26,7 @@ Compiler:
 
 - Detects syntax problems.
 
-SNOWBROS Inspector:
+Snowbros Atlas:
 
 - Detects engineering problems.
 
@@ -92,7 +92,7 @@ Developers use one engine.
 
 # Product Architecture
 
-SNOWBROS Inspector consists of independent modules.
+Snowbros Atlas consists of independent modules.
 
 scanner/
 parser/
@@ -787,6 +787,6 @@ Everything should be deterministic and explainable.
 
 The project succeeds if developers say:
 
-"I already had ESLint, TypeScript, and my IDE—but SNOWBROS Inspector found issues none of them caught, explained the root cause, and did it in seconds."
+"I already had ESLint, TypeScript, and my IDE—but Snowbros Atlas found issues none of them caught, explained the root cause, and did it in seconds."
 
 That is the standard every design and implementation decision should be measured against.

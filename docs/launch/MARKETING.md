@@ -6,11 +6,11 @@ All copy below is ready to post, pending the final repo URL swap.
 
 ## GitHub announcement (Discussions / release announcement)
 
-**Title:** SNOWBROS Inspector v0.1.0 — deterministic static analysis for JS/TS, written in Rust
+**Title:** Snowbros Atlas v0.1.0 — deterministic static analysis for JS/TS, written in Rust
 
 Hi everyone —
 
-Today we're releasing SNOWBROS Inspector, a static-analysis engine that
+Today we're releasing Snowbros Atlas, a static-analysis engine that
 treats engineering problems the way a compiler treats syntax errors:
 deterministically. Same codebase in, same findings out, every time.
 
@@ -39,12 +39,12 @@ contributions.
 
 ## LinkedIn launch post
 
-I just released SNOWBROS Inspector — an open-source static-analysis
+I just released Snowbros Atlas — an open-source static-analysis
 engine for JavaScript/TypeScript, written in Rust.
 
 The idea: engineering intelligence should be **deterministic**. Most
 "AI code review" tools give you different answers on different days.
-SNOWBROS behaves like a compiler — same code in, same findings out,
+Snowbros Atlas behaves like a compiler — same code in, same findings out,
 every time — and every finding ships with the evidence chain that
 produced it.
 
@@ -68,7 +68,7 @@ rules you'd want next.
 
 ## X/Twitter thread
 
-**1/** Shipped: SNOWBROS Inspector — deterministic static analysis for
+**1/** Shipped: Snowbros Atlas — deterministic static analysis for
 JS/TS, written in Rust.
 
 Same code in → same findings out. Every time. No AI deciding whether
@@ -104,7 +104,7 @@ Rust, open source, MIT/Apache. Repo: <link>
 
 ## Reddit launch post (r/typescript, r/javascript, adapt per sub)
 
-**Title:** SNOWBROS Inspector — deterministic whole-project analysis for
+**Title:** Snowbros Atlas — deterministic whole-project analysis for
 JS/TS (Rust, open source). Finds circular imports, dead files, Next.js
 boundary violations — with proof.
 
@@ -140,7 +140,7 @@ reports very welcome.
 
 ## Hacker News (Show HN)
 
-**Title:** Show HN: SNOWBROS Inspector – deterministic static analysis
+**Title:** Show HN: Snowbros Atlas – deterministic static analysis
 for JS/TS, in Rust
 
 **Text:**
@@ -177,13 +177,13 @@ the most useful thing you can give me.
 
 ## Product Hunt
 
-**Name:** SNOWBROS Inspector
+**Name:** Snowbros Atlas
 
 **Tagline:** A compiler for engineering problems in JS/TS
 
 **Description:**
 
-SNOWBROS Inspector is an open-source static-analysis engine written in
+Snowbros Atlas is an open-source static-analysis engine written in
 Rust. It maps your entire JavaScript/TypeScript project — imports,
 exports, env vars, framework boundaries — and reports problems it can
 prove: circular imports, dead files, unused dependencies, leaked
@@ -236,5 +236,5 @@ Security tab screenshot with SARIF findings.
 Caption: "LSP for your editor. SARIF for GitHub. One engine, same answers."
 
 **[1:20–1:30] Close.**
-Logo card. Caption: "SNOWBROS Inspector. Open source, Rust, MIT/Apache."
+Logo card. Caption: "Snowbros Atlas. Open source, Rust, MIT/Apache."
 `npx snowbros analyze` + repo URL.

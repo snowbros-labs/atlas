@@ -1,4 +1,4 @@
-//! Core types shared by every SNOWBROS Inspector subsystem.
+//! Core types shared by every Snowbros Atlas subsystem.
 //!
 //! This crate defines the common vocabulary of the engine: [`Diagnostic`],
 //! [`Severity`], [`Confidence`], [`Span`], [`SourceLocation`], [`Config`],

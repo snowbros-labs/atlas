@@ -10,7 +10,7 @@ use crate::report::Report;
 /// diagnostic order.
 pub fn render(report: &Report) -> String {
     let mut md = String::new();
-    let _ = writeln!(md, "# SNOWBROS Inspector Report");
+    let _ = writeln!(md, "# Snowbros Atlas Report");
     let _ = writeln!(md);
     let _ = writeln!(
         md,
@@ -121,7 +121,7 @@ mod tests {
     #[test]
     fn renders_findings_and_summary() {
         let md = render(&sample_report());
-        assert!(md.contains("# SNOWBROS Inspector Report"));
+        assert!(md.contains("# Snowbros Atlas Report"));
         assert!(md.contains("**1 finding**"));
         assert!(md.contains("| critical | 1 |"));
         assert!(md.contains("`src/x.ts:3:5`"));

@@ -1,4 +1,4 @@
-//! SNOWBROS Inspector CLI implementation.
+//! Snowbros Atlas CLI implementation.
 //!
 //! Installed as both `snowbros` and the short alias `sb` — two thin binary
 //! entry points call [`run`]. All analysis logic lives in library crates;

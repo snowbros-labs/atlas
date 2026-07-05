@@ -6,8 +6,8 @@ members = ["crates/*"]
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/snowbros/snowbros-inspector"
-authors = ["SNOWBROS Inspector Contributors"]
+repository = "https://github.com/snowbros/atlas"
+authors = ["Snowbros Atlas Contributors"]
 rust-version = "1.85"
 
 [workspace.dependencies]

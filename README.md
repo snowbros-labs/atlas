@@ -1,9 +1,9 @@
-# SNOWBROS Inspector
+# Snowbros Atlas
 
 **Deterministic engineering intelligence for JavaScript/TypeScript codebases.**
 
-[![CI](https://github.com/snowbros/snowbros-inspector/actions/workflows/ci.yml/badge.svg)](https://github.com/snowbros/snowbros-inspector/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/snowbros/snowbros-inspector)](https://github.com/snowbros/snowbros-inspector/releases)
+[![CI](https://github.com/snowbros/atlas/actions/workflows/ci.yml/badge.svg)](https://github.com/snowbros/atlas/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/snowbros/atlas)](https://github.com/snowbros/atlas/releases)
 [![npm](https://img.shields.io/npm/v/snowbros)](https://www.npmjs.com/package/snowbros)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![Rust](https://img.shields.io/badge/rust-1.96-orange.svg)](rust-toolchain.toml)
@@ -12,7 +12,7 @@
 npx snowbros analyze
 ```
 
-SNOWBROS Inspector maps your entire project — every import, export, env
+Snowbros Atlas maps your entire project — every import, export, env
 var, and framework boundary — and reports problems it can **prove**:
 circular imports, dead files, server-only code leaking into Next.js client
 components, unused dependencies, hardcoded secrets. It behaves like a
@@ -52,38 +52,38 @@ More: [real-world examples](docs/EXAMPLES.md).
 
 ```sh
 npx snowbros analyze        # one-shot, no install
-npm install -g snowbros     # or install globally: `sb`, `snowbros`
+npm install -g @snowbros/atlas   # or install globally: `sb`, `snowbros`
 ```
 
 ### Shell installer (macOS, Linux)
 
 ```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/snowbros/snowbros-inspector/releases/latest/download/snowbros-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.sh | sh
 ```
 
 ### PowerShell installer (Windows)
 
 ```powershell
-irm https://github.com/snowbros/snowbros-inspector/releases/latest/download/snowbros-installer.ps1 | iex
+irm https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.ps1 | iex
 ```
 
 ### Homebrew (macOS, Linux)
 
 ```sh
-brew install snowbros/tap/snowbros
+brew install snowbros/tap/snowbros-atlas
 ```
 
 ### Cargo (from source)
 
 ```sh
-cargo install snowbros --locked
+cargo install snowbros-atlas --locked
 ```
 
 ### GitHub Releases
 
 Prebuilt archives with SHA-256 checksums for Windows (x64), macOS
 (x64/arm64), and Linux (x64/arm64) on the
-[releases page](https://github.com/snowbros/snowbros-inspector/releases).
+[releases page](https://github.com/snowbros/atlas/releases).
 
 Platform-by-platform details: [docs/INSTALL.md](docs/INSTALL.md).
 
@@ -96,7 +96,7 @@ sb analyze                   # full analysis, colored terminal report
 ```
 
 ```text
-SNOWBROS Inspector · analyze
+Snowbros Atlas · analyze
   root: /work/acme-web
   files scanned: 512
   cache: 0 reused, 512 parsed
@@ -227,7 +227,7 @@ the cache can never change results, only skip work.
 | SARIF / LSP / watch / health score | ✅ all built in | LSP via editor | ❌ | ❌ | ❌ |
 | Runtime | native binary | Node | Node | Node | Node |
 
-Not a linter replacement: SNOWBROS doesn't do stylistic or per-file
+Not a linter replacement: Snowbros Atlas doesn't do stylistic or per-file
 correctness rules — run it *alongside* ESLint/Biome. Its territory is
 project structure: the graph, the boundaries, the manifest.
 
@@ -262,7 +262,7 @@ Full design: [ARCHITECTURE.md](ARCHITECTURE.md).
 cargo test --workspace                          # ~190 tests
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all --check
-cargo bench -p snowbros                         # criterion benchmarks
+cargo bench -p snowbros-atlas                         # criterion benchmarks
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions (determinism rules,

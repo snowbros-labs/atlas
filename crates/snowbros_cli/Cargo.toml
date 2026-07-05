@@ -1,7 +1,7 @@
 [package]
-name = "snowbros"
+name = "snowbros-atlas"
 description = "Deterministic engineering intelligence for JavaScript/TypeScript codebases."
-homepage = "https://github.com/snowbros/snowbros-inspector"
+homepage = "https://github.com/snowbros/atlas"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

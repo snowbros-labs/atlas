@@ -1,6 +1,6 @@
 [package]
 name = "snowbros_core"
-description = "Core types shared by every SNOWBROS Inspector subsystem: diagnostics, severity, confidence, spans, configuration, project model."
+description = "Core types shared by every Snowbros Atlas subsystem: diagnostics, severity, confidence, spans, configuration, project model."
 version.workspace = true
 edition.workspace = true
 license.workspace = true

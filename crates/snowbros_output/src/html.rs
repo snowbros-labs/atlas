@@ -66,11 +66,11 @@ pub fn render(report: &Report) -> String {
         h,
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-         <title>SNOWBROS Inspector Report</title><style>{CSS}</style></head><body>"
+         <title>Snowbros Atlas Report</title><style>{CSS}</style></head><body>"
     );
     let _ = write!(
         h,
-        "<h1>SNOWBROS Inspector Report</h1>\
+        "<h1>Snowbros Atlas Report</h1>\
          <p>{} finding{} · engine v{}</p>",
         report.summary.total,
         if report.summary.total == 1 { "" } else { "s" },
@@ -134,7 +134,7 @@ pub fn render(report: &Report) -> String {
 
     let _ = write!(
         h,
-        "<footer>Generated deterministically by SNOWBROS Inspector — same \
+        "<footer>Generated deterministically by Snowbros Atlas — same \
          codebase, same report.</footer></body></html>"
     );
     h

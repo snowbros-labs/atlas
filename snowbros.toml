@@ -1,4 +1,4 @@
-# SNOWBROS Inspector configuration (dog-fooding our own tool).
+# Snowbros Atlas configuration (dog-fooding our own tool).
 
 [analysis]
 min_severity = "info"

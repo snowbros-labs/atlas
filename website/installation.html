@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Installation — SNOWBROS Inspector</title>
+<title>Installation — Snowbros Atlas</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <nav>
-  <span class="brand">SNOWBROS <span class="sub">Inspector</span></span>
+  <span class="brand">SNOWBROS <span class="sub">Atlas</span></span>
   <a href="index.html">Home</a>
   <a href="features.html">Features</a>
   <a href="installation.html" class="active">Install</a>
@@ -17,7 +17,7 @@
   <a href="benchmarks.html">Benchmarks</a>
   <a href="roadmap.html">Roadmap</a>
   <a href="contributing.html">Contributing</a>
-  <a href="https://github.com/snowbros/snowbros-inspector">GitHub</a>
+  <a href="https://github.com/snowbros/atlas">GitHub</a>
 </nav>
 <main>
   <h1>Installation</h1>
@@ -27,21 +27,21 @@
 
   <h2>npm / npx (Node ≥ 18)</h2>
   <pre><code>npx snowbros analyze        # one-shot
-npm install -g snowbros     # global
-npm install -D snowbros     # per-project</code></pre>
+npm install -g @snowbros/atlas  # global
+npm install -D @snowbros/atlas  # per-project</code></pre>
 
   <h2>Shell installer — macOS, Linux</h2>
   <pre><code>curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/snowbros/snowbros-inspector/releases/latest/download/snowbros-installer.sh | sh</code></pre>
+  https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.sh | sh</code></pre>
 
   <h2>PowerShell installer — Windows</h2>
-  <pre><code>irm https://github.com/snowbros/snowbros-inspector/releases/latest/download/snowbros-installer.ps1 | iex</code></pre>
+  <pre><code>irm https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.ps1 | iex</code></pre>
 
   <h2>Homebrew — macOS, Linux</h2>
-  <pre><code>brew install snowbros/tap/snowbros</code></pre>
+  <pre><code>brew install snowbros/tap/snowbros-atlas</code></pre>
 
   <h2>Cargo — from source</h2>
-  <pre><code>cargo install snowbros --locked</code></pre>
+  <pre><code>cargo install snowbros-atlas --locked</code></pre>
 
   <h2>Verify</h2>
   <pre><code>sb --version
@@ -50,8 +50,8 @@ cd your-project && sb init && sb analyze</code></pre>
   <h2>Editor (LSP)</h2>
   <p>Command <code>sb</code>, argument <code>lsp</code>, stdio transport.
   Neovim and Helix snippets in the
-  <a href="https://github.com/snowbros/snowbros-inspector/blob/master/docs/INSTALL.md#editor-lsp-setup">install guide</a>.</p>
+  <a href="https://github.com/snowbros/atlas/blob/master/docs/INSTALL.md#editor-lsp-setup">install guide</a>.</p>
 </main>
-<footer>MIT OR Apache-2.0 · © 2026 SNOWBROS Inspector Contributors</footer>
+<footer>MIT OR Apache-2.0 · © 2026 Snowbros Atlas Contributors</footer>
 </body>
 </html>

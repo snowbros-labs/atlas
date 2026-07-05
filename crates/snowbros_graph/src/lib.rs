@@ -1,4 +1,4 @@
-//! Semantic graph engine — the heart of SNOWBROS Inspector.
+//! Semantic graph engine — the heart of Snowbros Atlas.
 //!
 //! The [`SemanticGraph`] holds every entity the engine understands (files,
 //! modules, symbols, packages) and the typed relationships between them.

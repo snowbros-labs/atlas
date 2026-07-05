@@ -85,7 +85,7 @@ impl Config {
 
     /// The commented starter template written by `snowbros init`.
     pub fn starter_template() -> &'static str {
-        r#"# SNOWBROS Inspector configuration.
+        r#"# Snowbros Atlas configuration.
 # Every setting is optional — an empty file is valid.
 # Docs: https://snowbros.dev/docs/configuration
 

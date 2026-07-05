@@ -1,6 +1,6 @@
 # Real-world examples
 
-SNOWBROS Inspector run against three well-known open-source projects
+Snowbros Atlas run against three well-known open-source projects
 (shallow clones, release build, Windows x64 laptop). Commits analyzed:
 zod `912f0f5`, axios `e435384`, fastify `94bcbcc` (July 2026).
 
@@ -70,7 +70,7 @@ out until the resolver learns `main`.
 
 `sb fix --dry-run` reported **nothing auto-fixable** in all three — no
 unused dependencies, no dead `.env` entries. Correct behavior: mature
-projects keep manifests clean, and SNOWBROS refuses to "fix" anything it
+projects keep manifests clean, and Snowbros Atlas refuses to "fix" anything it
 cannot prove. (On a repo with an unused dependency, the fix is a
 format-preserving `package.json` edit; devDependencies are never touched.)
 

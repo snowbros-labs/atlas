@@ -1,4 +1,4 @@
-# Contributing to SNOWBROS Inspector
+# Contributing to Snowbros Atlas
 
 Thanks for helping! This project has a few hard rules that keep it what it
 is — read these before opening a PR.
@@ -21,8 +21,8 @@ is — read these before opening a PR.
 ## Development setup
 
 ```sh
-git clone https://github.com/snowbros/snowbros-inspector
-cd snowbros-inspector
+git clone https://github.com/snowbros/atlas
+cd atlas
 cargo test --workspace
 ```
 
