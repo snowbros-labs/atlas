@@ -82,7 +82,7 @@ code --install-extension snowbros-atlas.vsix
 
 ## Publishing to the Marketplace
 
-1. Create/confirm the `snowbros-labs` publisher at
+1. Create/confirm the `snowbros` publisher at
    <https://marketplace.visualstudio.com/manage>.
 2. Generate a Personal Access Token (Azure DevOps, scope **Marketplace →
    Manage**).
@@ -91,7 +91,7 @@ code --install-extension snowbros-atlas.vsix
 5. Publish:
 
    ```sh
-   npx @vscode/vsce login snowbros-labs
+   npx @vscode/vsce login snowbros
    npx @vscode/vsce publish
    ```
 

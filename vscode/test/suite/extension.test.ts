@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { resolveExecutable, findOnPath, ResolveDeps } from "../../src/resolve";
 import { parseReport } from "../../src/commands";
 
-const EXT_ID = "snowbros-labs.atlas";
+const EXT_ID = "snowbros.snowbros-atlas";
 
 function deps(over: Partial<ResolveDeps>): ResolveDeps {
   return {
