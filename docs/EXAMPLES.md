@@ -59,7 +59,7 @@ MEDIUM 51 unresolved imports (mostly `require('../..')` package self-imports)
 LOW    39 potentially dead files
 ```
 
-The unresolved imports expose a current, documented limitation: SNOWBROS
+The unresolved imports expose a current, documented limitation: Snowbros Atlas
 resolves directory imports via `index.*` files but does not yet consult
 `package.json#main`, so fastify's test-suite pattern of requiring the
 package root (`require('../..')` → `fastify.js`) reports as unresolved.

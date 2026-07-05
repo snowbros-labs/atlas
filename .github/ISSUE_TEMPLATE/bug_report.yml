@@ -1,0 +1,73 @@
+name: Bug report
+description: Report incorrect analysis, a crash, or unexpected behavior.
+title: "[bug]: "
+labels: ["C-bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. A minimal reproduction is the
+        single most useful thing you can provide — it usually turns a multi-day
+        investigation into a same-day fix.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I am running the latest release (`sb --version`).
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `sb --version`.
+      placeholder: snowbros 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install method
+      options:
+        - npm / npx
+        - Shell installer
+        - PowerShell installer
+        - Homebrew
+        - Cargo
+        - GitHub release archive
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and architecture
+      placeholder: macOS 14 arm64 / Ubuntu 22.04 x64 / Windows 11 x64
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you observe, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: >
+        Steps, a minimal repo, or a code snippet that triggers the behavior.
+        Include the exact command you ran and its output.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: snowbros.toml
+      description: Your config, if relevant. Redact anything sensitive.
+      render: toml
+    validations:
+      required: false

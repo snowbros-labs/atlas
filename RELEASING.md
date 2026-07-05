@@ -54,7 +54,7 @@ The release workflow then:
 ```sh
 # Publish the npm wrapper (it downloads binaries from the new release).
 cd npm && npm publish --access public   # @snowbros/atlas (scoped)
-# then publish the unscoped `snowbros` alias package (see docs/launch/NAMING.md)
+# then publish the unscoped `snowbros` alias package (see docs/internal/launch/NAMING.md)
 
 # Publish to crates.io so `cargo install snowbros-atlas --locked` works.
 cargo publish -p snowbros_core   # then dependents in dependency order,

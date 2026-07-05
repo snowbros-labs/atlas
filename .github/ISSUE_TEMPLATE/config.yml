@@ -1,0 +1,12 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & discussion
+    url: https://github.com/snowbros-labs/atlas/discussions
+    about: >
+      Ask questions, share how you use Snowbros Atlas, or float an early idea.
+      Please use Discussions for anything that isn't a concrete bug or feature.
+  - name: Security vulnerability
+    url: https://github.com/snowbros-labs/atlas/security/advisories/new
+    about: >
+      Report security issues privately via GitHub Security Advisories — do not
+      open a public issue. See SECURITY.md.

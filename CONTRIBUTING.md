@@ -3,6 +3,22 @@
 Thanks for helping! This project has a few hard rules that keep it what it
 is — read these before opening a PR.
 
+By participating you agree to abide by our
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Where to start
+
+- **Questions or ideas?** Open a [Discussion][discussions] — not an issue.
+- **Found a bug?** File a [bug report][bugs]; a minimal reproduction helps most.
+- **Want to write a rule?** That is the most valuable contribution to a rules
+  engine. Read **[docs/adding-a-rule.md](docs/adding-a-rule.md)** first.
+- **Looking for a starting task?** Check issues labelled
+  [`good first issue`][gfi].
+
+[discussions]: https://github.com/snowbros-labs/atlas/discussions
+[bugs]: https://github.com/snowbros-labs/atlas/issues/new?template=bug_report.yml
+[gfi]: https://github.com/snowbros-labs/atlas/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22
+
 ## Ground rules
 
 1. **Determinism is non-negotiable.** Findings must be a pure function of
@@ -39,6 +55,11 @@ cargo test --workspace
 ```
 
 ## Adding a rule
+
+Rules are held to a high correctness bar (determinism, provable findings,
+mandatory evidence, honest confidence, secret redaction). The full walkthrough —
+metadata, detector, tests, and fixers — lives in
+**[docs/adding-a-rule.md](docs/adding-a-rule.md)**. In short:
 
 1. Implement it in `crates/snowbros_rules`.
 2. Add metadata: `crates/snowbros_rules/rules/<category>/<name>.toml` (embedded at compile time).

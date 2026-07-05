@@ -1,0 +1,28 @@
+# Code owners for Snowbros Atlas
+#
+# These owners are requested for review automatically when someone opens a
+# pull request that changes a matching path. See
+# https://docs.github.com/articles/about-code-owners
+#
+# Order matters: the last matching pattern takes precedence.
+
+# Default owner for everything in the repo.
+*                       @snowbros-labs/maintainers
+
+# Analysis engine — determinism, accuracy, and evidence rules apply here.
+/crates/                @snowbros-labs/maintainers
+
+# Rule definitions and metadata.
+/crates/snowbros_rules/ @snowbros-labs/maintainers
+
+# Packaging and distribution.
+/npm/                   @snowbros-labs/maintainers
+/npm-unscoped/          @snowbros-labs/maintainers
+/dist-workspace.toml    @snowbros-labs/maintainers
+
+# CI/CD and community health.
+/.github/               @snowbros-labs/maintainers
+
+# Documentation.
+/docs/                  @snowbros-labs/maintainers
+/README.md              @snowbros-labs/maintainers
