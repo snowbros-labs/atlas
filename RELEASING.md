@@ -11,7 +11,7 @@ output-format changes bump the minor version.
 1. Create the GitHub repository and push `master`/`main`.
    The `repository`/`homepage` URLs in `Cargo.toml` and `npm/package.json`
    must match the real repo.
-2. Create the Homebrew tap repository `snowbros/homebrew-tap` (empty repo
+2. Create the Homebrew tap repository `snowbros-labs/homebrew-tap` (empty repo
    with a `Formula/` directory is enough).
 3. Add a repo secret `HOMEBREW_TAP_TOKEN` — a token with write access to
    the tap — so the release workflow can push the generated formula.
@@ -65,15 +65,15 @@ cargo publish -p snowbros-atlas  # ending with the CLI package
 
 ```sh
 # Windows (PowerShell)
-irm https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.ps1 | iex
+irm https://github.com/snowbros-labs/atlas/releases/latest/download/snowbros-atlas-installer.ps1 | iex
 sb --version
 
 # macOS / Linux
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/snowbros-labs/atlas/releases/latest/download/snowbros-atlas-installer.sh | sh
 sb --version
 
 # Homebrew
-brew install snowbros/tap/snowbros-atlas && sb --version
+brew install snowbros-labs/tap/snowbros-atlas && sb --version
 
 # npm (all platforms)
 npx snowbros@latest --version

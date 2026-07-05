@@ -26,7 +26,7 @@ manually installed binary set `SNOWBROS_BINARY_PATH`.
 ## Shell installer — macOS, Linux
 
 ```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/snowbros-labs/atlas/releases/latest/download/snowbros-atlas-installer.sh | sh
 ```
 
 Installs to `~/.cargo/bin` (or `~/.local/bin`), adds PATH guidance.
@@ -34,13 +34,13 @@ Installs to `~/.cargo/bin` (or `~/.local/bin`), adds PATH guidance.
 ## PowerShell installer — Windows
 
 ```powershell
-irm https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.ps1 | iex
+irm https://github.com/snowbros-labs/atlas/releases/latest/download/snowbros-atlas-installer.ps1 | iex
 ```
 
 ## Homebrew — macOS, Linux
 
 ```sh
-brew install snowbros/tap/snowbros-atlas
+brew install snowbros-labs/tap/snowbros-atlas
 ```
 
 The formula is generated and pushed to the tap automatically by the release
@@ -58,7 +58,7 @@ published `Cargo.lock`).
 ## Manual — GitHub Releases
 
 1. Download the archive for your platform from
-   [releases](https://github.com/snowbros/atlas/releases):
+   [releases](https://github.com/snowbros-labs/atlas/releases):
    `snowbros-<target>.tar.gz` (Unix) or `snowbros-x86_64-pc-windows-msvc.zip`.
 2. Verify: `sha256sum -c <archive>.sha256` (or `certutil -hashfile <archive> SHA256`).
 3. Extract and place `sb` / `snowbros` on your PATH.

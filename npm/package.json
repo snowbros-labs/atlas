@@ -5,10 +5,10 @@
   "license": "MIT OR Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/snowbros/atlas.git",
+    "url": "git+https://github.com/snowbros-labs/atlas.git",
     "directory": "npm"
   },
-  "homepage": "https://github.com/snowbros/atlas",
+  "homepage": "https://github.com/snowbros-labs/atlas",
   "keywords": [
     "static-analysis",
     "linter",

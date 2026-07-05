@@ -36,7 +36,7 @@ from this environment. No code blockers.
 
 **Branding (this pass)**
 - Full rebrand to SNOWBROS (company) / Snowbros Atlas (product) / `sb`
-  (CLI) / `snowbros/atlas` (repo) across README, all docs, website seed
+  (CLI) / `snowbros-labs/atlas` (repo) across README, all docs, website seed
   pages, marketing copy, Cargo/npm metadata, CLI output strings, SARIF
   tool name, cliff config (historical commits rewritten via
   preprocessor). Zero stale references outside internal design docs.

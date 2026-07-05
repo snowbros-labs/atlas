@@ -32,7 +32,7 @@ transparency and animations.
 | 4 | 0:35–0:50 | `sb analyze` again, then `touch lib/axios.js && sb analyze` | cache line `431 reused, 0 parsed` then `430 reused, 1 parsed`; sub-100 ms feel | cut; underline cache line |
 | 5 | 0:50–1:05 | `sb fix --dry-run` then `sb fix` then `git diff --stat` | plan lists 2 fixes; apply prints `✓ 2 fix(es) changed 2 file(s)`; diff shows `package.json` + `.env`, 2 files changed | cut; end on the diff |
 | 6 | 1:05–1:20 | editor open on a file with `eval(` + LSP attached; side panel: GitHub Security tab (SARIF screenshot) | red squiggle, hover shows `security/no-eval · snowbros` | split-screen, 7 s each |
-| 7 | 1:20–1:30 | logo card (static) | wordmark + `npx snowbros analyze` + github.com/snowbros/atlas | fade in, hold 6 s |
+| 7 | 1:20–1:30 | logo card (static) | wordmark + `npx snowbros analyze` + github.com/snowbros-labs/atlas | fade in, hold 6 s |
 
 ## Captions (burn-in, one line, bottom center)
 
@@ -61,7 +61,7 @@ transparency and animations.
 - [ ] Captions: white #E6EDF7, 60% black backing bar, 4 % bottom margin, ≤ 42 chars
 - [ ] Zoom in shot 2 eased (no linear zoom); max 110%
 - [ ] Hash comparison in shot 3 visually highlighted (box or brighten)
-- [ ] End card holds ≥ 5 s; URL spelled `github.com/snowbros/atlas`
+- [ ] End card holds ≥ 5 s; URL spelled `github.com/snowbros-labs/atlas`
 - [ ] Export: 1920×1080 H.264 MP4 (launch posts) + 1280×720 GIF ≤ 10 MB
       (README, first 30 s only) — README embeds the GIF, links the MP4
 - [ ] Color check on a light-mode screen (captions still readable)

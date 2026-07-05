@@ -7,18 +7,18 @@ tagged release on CI is the real test, verified with the checklist below.
 
 ## One-time setup
 
-1. **Create the tap repository:** `snowbros/homebrew-tap`, public.
+1. **Create the tap repository:** `snowbros-labs/homebrew-tap`, public.
    Contents: a `README.md` and an empty `Formula/` directory. Nothing
    else required — cargo-dist commits the formula into `Formula/`.
 2. **Create the token:** a fine-grained GitHub personal access token,
-   scoped to **only** the `snowbros/homebrew-tap` repository, with
+   scoped to **only** the `snowbros-labs/homebrew-tap` repository, with
    **Contents: Read and write** permission. (Classic token alternative:
    `repo` scope — broader; prefer fine-grained.) Set an expiry reminder.
-3. **Add the secret:** in `snowbros/atlas` → Settings → Secrets and
+3. **Add the secret:** in `snowbros-labs/atlas` → Settings → Secrets and
    variables → Actions → new repository secret named
    `HOMEBREW_TAP_TOKEN` with that token. The generated `release.yml`
    already passes it to the publish-homebrew job (config:
-   `tap = "snowbros/homebrew-tap"`, `publish-jobs = ["homebrew"]` in
+   `tap = "snowbros-labs/homebrew-tap"`, `publish-jobs = ["homebrew"]` in
    `dist-workspace.toml`).
 
 ## What happens on `git push origin v0.1.0`
@@ -28,7 +28,7 @@ tagged release on CI is the real test, verified with the checklist below.
 3. `snowbros-atlas.rb` is generated with per-target URLs and sha256s.
 4. The GitHub Release is created with all artifacts.
 5. The publish-homebrew job commits the formula to
-   `snowbros/homebrew-tap/Formula/snowbros-atlas.rb` using
+   `snowbros-labs/homebrew-tap/Formula/snowbros-atlas.rb` using
    `HOMEBREW_TAP_TOKEN`.
 
 ## First-release verification checklist (macOS or Linux machine)
@@ -37,9 +37,9 @@ tagged release on CI is the real test, verified with the checklist below.
 - [ ] `Formula/snowbros-atlas.rb` exists in the tap with a commit from
       the release run; `version "0.1.0"` and five sha256 entries match
       the release assets' `.sha256` files.
-- [ ] `brew tap snowbros/tap` succeeds.
+- [ ] `brew tap snowbros-labs/tap` succeeds.
 - [ ] `brew install snowbros-atlas` (equivalently
-      `brew install snowbros/tap/snowbros-atlas`) succeeds.
+      `brew install snowbros-labs/tap/snowbros-atlas`) succeeds.
 - [ ] `sb --version` prints `snowbros 0.1.0`; `snowbros --version` too.
 - [ ] `brew test snowbros-atlas` (if a test block exists) or manual:
       `cd $(mktemp -d) && git clone --depth 1 https://github.com/axios/axios && cd axios && sb analyze` produces findings and exit 0.
@@ -53,7 +53,7 @@ tagged release on CI is the real test, verified with the checklist below.
 - **publish job 403:** token lacks Contents write on the tap, or
   expired. Regenerate, update the secret, re-run the job.
 - **Formula points at wrong URLs:** `repository` in `Cargo.toml` and the
-  actual GitHub repo must match exactly (`snowbros/atlas`).
+  actual GitHub repo must match exactly (`snowbros-labs/atlas`).
 - **Install works but binaries missing:** check the archive layout in
   the release assets — both `sb` and `snowbros` must be at the archive
   root (dist plan output lists them).

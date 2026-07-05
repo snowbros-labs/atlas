@@ -15,7 +15,7 @@ security fixes.
 Please **do not open a public issue** for security problems.
 
 Report privately via **GitHub Security Advisories**:
-[Security → Report a vulnerability](https://github.com/snowbros/atlas/security/advisories/new)
+[Security → Report a vulnerability](https://github.com/snowbros-labs/atlas/security/advisories/new)
 on the repository. If you cannot use GitHub, email
 **security@snowbros.me**.
 

@@ -30,7 +30,7 @@ function archiveName(t) {
 
 /** Download URL for a version + target. */
 function downloadUrl(version, t) {
-  const repo = "https://github.com/snowbros/atlas";
+  const repo = "https://github.com/snowbros-labs/atlas";
   return `${repo}/releases/download/v${version}/${archiveName(t)}`;
 }
 

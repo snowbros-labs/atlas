@@ -47,7 +47,7 @@ test("download url embeds the package version as the tag", () => {
   const url = platform.downloadUrl(pkg.version, platform.target("darwin", "arm64"));
   assert.strictEqual(
     url,
-    `https://github.com/snowbros/atlas/releases/download/v${pkg.version}/snowbros-atlas-aarch64-apple-darwin.tar.gz`
+    `https://github.com/snowbros-labs/atlas/releases/download/v${pkg.version}/snowbros-atlas-aarch64-apple-darwin.tar.gz`
   );
 });
 

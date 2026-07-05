@@ -9,7 +9,11 @@ Finalized 2026-07-05.
   bare "Snowbros"
 - **CLI executables:** `sb` (primary) and `snowbros` (long form) —
   unchanged
-- **Repository:** `snowbros/atlas`
+- **Repository:** `snowbros-labs/atlas` — the bare `snowbros` GitHub
+  org is squatted (dormant since 2015, discovered at push time
+  2026-07-05); `snowbros-labs` chosen from free alternates. The npm
+  scope `@snowbros` is independent of GitHub and stays as decided.
+  Domain snowbros.me unaffected.
 
 ## Package availability (checked 2026-07-05)
 
@@ -28,7 +32,7 @@ Finalized 2026-07-05.
   ecosystem will ship more. Cargo package name also drives cargo-dist
   artifact names (`snowbros-atlas-<target>.tar.gz`), installer names
   (`snowbros-atlas-installer.sh/.ps1`), and the Homebrew formula
-  (`snowbros-atlas.rb` → `brew install snowbros/tap/snowbros-atlas`).
+  (`snowbros-atlas.rb` → `brew install snowbros-labs/tap/snowbros-atlas`).
   Library crates keep their `snowbros_*` names.
 - **npm canonical package: `@snowbros/atlas`** (register the `snowbros`
   npm org first). Reflects the ecosystem hierarchy and can never be

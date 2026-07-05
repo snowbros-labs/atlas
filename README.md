@@ -2,8 +2,8 @@
 
 **Deterministic engineering intelligence for JavaScript/TypeScript codebases.**
 
-[![CI](https://github.com/snowbros/atlas/actions/workflows/ci.yml/badge.svg)](https://github.com/snowbros/atlas/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/snowbros/atlas)](https://github.com/snowbros/atlas/releases)
+[![CI](https://github.com/snowbros-labs/atlas/actions/workflows/ci.yml/badge.svg)](https://github.com/snowbros-labs/atlas/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/snowbros-labs/atlas)](https://github.com/snowbros-labs/atlas/releases)
 [![npm](https://img.shields.io/npm/v/snowbros)](https://www.npmjs.com/package/snowbros)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![Rust](https://img.shields.io/badge/rust-1.96-orange.svg)](rust-toolchain.toml)
@@ -58,19 +58,19 @@ npm install -g @snowbros/atlas   # or install globally: `sb`, `snowbros`
 ### Shell installer (macOS, Linux)
 
 ```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/snowbros-labs/atlas/releases/latest/download/snowbros-atlas-installer.sh | sh
 ```
 
 ### PowerShell installer (Windows)
 
 ```powershell
-irm https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.ps1 | iex
+irm https://github.com/snowbros-labs/atlas/releases/latest/download/snowbros-atlas-installer.ps1 | iex
 ```
 
 ### Homebrew (macOS, Linux)
 
 ```sh
-brew install snowbros/tap/snowbros-atlas
+brew install snowbros-labs/tap/snowbros-atlas
 ```
 
 ### Cargo (from source)
@@ -83,7 +83,7 @@ cargo install snowbros-atlas --locked
 
 Prebuilt archives with SHA-256 checksums for Windows (x64), macOS
 (x64/arm64), and Linux (x64/arm64) on the
-[releases page](https://github.com/snowbros/atlas/releases).
+[releases page](https://github.com/snowbros-labs/atlas/releases).
 
 Platform-by-platform details: [docs/INSTALL.md](docs/INSTALL.md).
 

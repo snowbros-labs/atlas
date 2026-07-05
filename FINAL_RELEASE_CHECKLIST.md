@@ -5,13 +5,17 @@ Background: [PRE_RELEASE_REPORT.md](PRE_RELEASE_REPORT.md) ·
 [RELEASING.md](RELEASING.md) ·
 [docs/launch/HOMEBREW_SETUP.md](docs/launch/HOMEBREW_SETUP.md).
 
-GitHub org slugs are case-insensitive; `github.com/SNOWBROS/atlas` and
-`github.com/snowbros/atlas` are the same repo. All metadata uses the
-lowercase canonical form.
+GitHub org: **snowbros-labs** (the bare `snowbros` slug is squatted by a
+dormant 2015 org). Brand in prose stays SNOWBROS / Snowbros Atlas; npm
+scope stays `@snowbros`; domain stays snowbros.me.
+
+Current state: code already pushed to `VED2107/atlas` (CI exercised
+there). Step 1 transfers it into the org.
 
 ## 0. Accounts (once, before anything)
 
-- [ ] Create GitHub organization `snowbros`.
+- [ ] Create GitHub organization `snowbros-labs` (web UI:
+      https://github.com/organizations/plan — org creation has no API).
 - [ ] `npm login` · create npm org **snowbros** (claims the `@snowbros`
       scope): https://www.npmjs.com/org/create — do this first, names
       are first-come-first-served.
@@ -20,32 +24,34 @@ lowercase canonical form.
       `npm view @snowbros/atlas` (404), and
       https://crates.io/crates/snowbros-atlas (404).
 
-## 1. Create and push the repository
+## 1. Move the repository into the org
+
+Code already lives at `VED2107/atlas`. Transfer (keeps stars, issues,
+and sets up redirects):
 
 ```sh
+gh api -X POST repos/VED2107/atlas/transfer -f new_owner=snowbros-labs
+# then point the local remote at the new home:
 cd "C:\PROJECTS\snowbros atlas"
-gh repo create snowbros/atlas --public \
-  --description "Deterministic static analysis for JS/TS: import graph, dead code, Next.js boundary violations, secrets — same code in, same findings out." \
-  --disable-wiki
-git remote add origin https://github.com/snowbros/atlas.git
-git push -u origin master
+git remote set-url origin https://github.com/snowbros-labs/atlas.git
+git push origin master   # no-op sanity check
 ```
 
 - [ ] First CI run green on all three OSes (fmt, clippy, test×3, deny,
       release-plan, npm-wrapper×3).
-- [ ] Add topics: `gh repo edit snowbros/atlas --add-topic static-analysis --add-topic typescript --add-topic javascript --add-topic nextjs --add-topic linter --add-topic developer-tools --add-topic rust --add-topic sarif --add-topic lsp --add-topic code-quality --add-topic architecture --add-topic dead-code --add-topic dependency-graph --add-topic security --add-topic ci`
+- [ ] Add topics: `gh repo edit snowbros-labs/atlas --add-topic static-analysis --add-topic typescript --add-topic javascript --add-topic nextjs --add-topic linter --add-topic developer-tools --add-topic rust --add-topic sarif --add-topic lsp --add-topic code-quality --add-topic architecture --add-topic dead-code --add-topic dependency-graph --add-topic security --add-topic ci`
 - [ ] Upload social preview PNG (Settings → Social preview; spec in
       docs/launch/SOCIAL_PREVIEW_SPEC.md).
 
 ## 2. Homebrew tap plumbing
 
 ```sh
-gh repo create snowbros/homebrew-tap --public --description "Homebrew formulas for SNOWBROS tools"
+gh repo create snowbros-labs/homebrew-tap --public --description "Homebrew formulas for SNOWBROS tools"
 # create Formula/ dir with a placeholder
-gh api -X PUT repos/snowbros/homebrew-tap/contents/Formula/.gitkeep \
+gh api -X PUT repos/snowbros-labs/homebrew-tap/contents/Formula/.gitkeep \
   -f message="init tap" -f content="$(printf '' | base64)"
-# fine-grained PAT: only repo snowbros/homebrew-tap, Contents: read/write
-gh secret set HOMEBREW_TAP_TOKEN --repo snowbros/atlas
+# fine-grained PAT: only repo snowbros-labs/homebrew-tap, Contents: read/write
+gh secret set HOMEBREW_TAP_TOKEN --repo snowbros-labs/atlas
 ```
 
 ## 3. Tag and release
@@ -54,15 +60,15 @@ gh secret set HOMEBREW_TAP_TOKEN --repo snowbros/atlas
 dist plan                      # final sanity: 5 archives + installers + formula
 git tag v0.1.0
 git push origin v0.1.0
-gh run watch --repo snowbros/atlas    # release workflow
+gh run watch --repo snowbros-labs/atlas    # release workflow
 ```
 
 - [ ] Release workflow green (5 build jobs, host job, publish-homebrew).
-- [ ] `gh release view v0.1.0 --repo snowbros/atlas` shows: 5 archives,
+- [ ] `gh release view v0.1.0 --repo snowbros-labs/atlas` shows: 5 archives,
       5 `.sha256` files, `snowbros-atlas-installer.sh`,
       `snowbros-atlas-installer.ps1`, `sha256.sum`, `source.tar.gz`.
 - [ ] Paste docs/launch/RELEASE_NOTES_v0.1.0.md over the release body:
-      `gh release edit v0.1.0 --repo snowbros/atlas --notes-file docs/launch/RELEASE_NOTES_v0.1.0.md`
+      `gh release edit v0.1.0 --repo snowbros-labs/atlas --notes-file docs/launch/RELEASE_NOTES_v0.1.0.md`
 
 ## 4. Publish npm
 
@@ -106,18 +112,18 @@ reserved.)
 
 ```powershell
 # Windows
-irm https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.ps1 | iex
+irm https://github.com/snowbros-labs/atlas/releases/latest/download/snowbros-atlas-installer.ps1 | iex
 sb --version        # snowbros 0.1.0
 ```
 
 ```sh
 # macOS / Linux
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/snowbros/atlas/releases/latest/download/snowbros-atlas-installer.sh | sh
+  https://github.com/snowbros-labs/atlas/releases/latest/download/snowbros-atlas-installer.sh | sh
 sb --version
 
 # Homebrew (macOS + one Linux box; full list in docs/launch/HOMEBREW_SETUP.md)
-brew install snowbros/tap/snowbros-atlas && sb --version
+brew install snowbros-labs/tap/snowbros-atlas && sb --version
 
 # npm — all three OSes
 npx @snowbros/atlas@0.1.0 --version
@@ -127,7 +133,7 @@ npx snowbros@0.1.0 --version
 cargo install snowbros-atlas --locked && sb --version
 
 # Checksums + a real run
-curl -LO https://github.com/snowbros/atlas/releases/download/v0.1.0/snowbros-atlas-x86_64-unknown-linux-gnu.tar.gz{,.sha256}
+curl -LO https://github.com/snowbros-labs/atlas/releases/download/v0.1.0/snowbros-atlas-x86_64-unknown-linux-gnu.tar.gz{,.sha256}
 sha256sum -c snowbros-atlas-x86_64-unknown-linux-gnu.tar.gz.sha256
 git clone --depth 1 https://github.com/axios/axios && cd axios && sb analyze
 ```

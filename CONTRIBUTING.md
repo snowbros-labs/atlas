@@ -21,7 +21,7 @@ is — read these before opening a PR.
 ## Development setup
 
 ```sh
-git clone https://github.com/snowbros/atlas
+git clone https://github.com/snowbros-labs/atlas
 cd atlas
 cargo test --workspace
 ```

@@ -7,7 +7,7 @@ box above it is checked. Companion docs: [RELEASING.md](RELEASING.md)
 ## 1. Identity (decided — see docs/launch/NAMING.md)
 
 - [x] Names finalized 2026-07-05: company SNOWBROS, product Snowbros
-      Atlas, CLI `sb`, repo `snowbros/atlas`, npm `@snowbros/atlas`
+      Atlas, CLI `sb`, repo `snowbros-labs/atlas`, npm `@snowbros/atlas`
       (+ unscoped `snowbros` alias), crates.io `snowbros-atlas`.
 - [x] Availability verified 2026-07-05: npm `snowbros` and scope
       `@snowbros` free; crates.io `snowbros`, `snowbros-atlas`,
@@ -26,7 +26,7 @@ box above it is checked. Companion docs: [RELEASING.md](RELEASING.md)
 - [ ] Upload social preview image (spec in LAUNCH_ASSETS.md).
 - [ ] Product site: separate `snowbros/website` repo (snowbros.me), seeded
       from this repo's `website/` directory — not part of this launch.
-- [ ] Create `snowbros/homebrew-tap` repo (empty, with `Formula/` dir).
+- [ ] Create `snowbros-labs/homebrew-tap` repo (empty, with `Formula/` dir).
 - [ ] Add repo secret `HOMEBREW_TAP_TOKEN` (write access to the tap).
 - [ ] Branch protection on the default branch: require CI green.
 
@@ -72,7 +72,7 @@ box above it is checked. Companion docs: [RELEASING.md](RELEASING.md)
 ## 7. Publish channels
 
 - [ ] Homebrew: formula landed in the tap;
-      `brew install snowbros/tap/snowbros-atlas && sb --version` on macOS and
+      `brew install snowbros-labs/tap/snowbros-atlas && sb --version` on macOS and
       Linux
 - [ ] npm: `cd npm && npm publish --access public` (2FA ready), then the unscoped `snowbros` alias;
       `npx snowbros@0.1.0 --version` on all three OSes

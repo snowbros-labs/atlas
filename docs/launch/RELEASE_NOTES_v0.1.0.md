@@ -32,7 +32,7 @@ loop; warm-cache runs are byte-identical to cold runs, proven by tests.
 
 ```sh
 npx snowbros analyze                     # npm / npx
-brew install snowbros/tap/snowbros-atlas       # Homebrew
+brew install snowbros-labs/tap/snowbros-atlas       # Homebrew
 cargo install snowbros-atlas --locked          # from source
 # shell / PowerShell installers + prebuilt archives on this release page
 ```

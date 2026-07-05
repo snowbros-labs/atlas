@@ -14,4 +14,4 @@ Supported platforms: Windows x64, macOS x64/arm64, Linux x64/arm64.
 On other platforms, build from source: `cargo install snowbros-atlas --locked`.
 
 Full documentation:
-[github.com/snowbros/atlas](https://github.com/snowbros/atlas)
+[github.com/snowbros-labs/atlas](https://github.com/snowbros-labs/atlas)
