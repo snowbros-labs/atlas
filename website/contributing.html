@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contributing — SNOWBROS Inspector</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <span class="brand">SNOWBROS <span class="sub">Inspector</span></span>
+  <a href="index.html">Home</a>
+  <a href="features.html">Features</a>
+  <a href="installation.html">Install</a>
+  <a href="documentation.html">Docs</a>
+  <a href="rules.html">Rules</a>
+  <a href="benchmarks.html">Benchmarks</a>
+  <a href="roadmap.html">Roadmap</a>
+  <a href="contributing.html" class="active">Contributing</a>
+  <a href="https://github.com/snowbros/snowbros-inspector">GitHub</a>
+</nav>
+<main>
+  <h1>Contributing</h1>
+  <p>Full guide:
+  <a href="https://github.com/snowbros/snowbros-inspector/blob/master/CONTRIBUTING.md">CONTRIBUTING.md</a>.
+  The short version:</p>
+
+  <h2>The ground rules</h2>
+  <ol>
+    <li><strong>Determinism is non-negotiable.</strong> Findings are a pure
+    function of code + config. No timestamps, no unstable iteration order,
+    no network during analysis.</li>
+    <li><strong>Accuracy over quantity.</strong> Unprovable → unresolved,
+    never guessed. False-positive guards documented per rule.</li>
+    <li><strong>Evidence is mandatory.</strong> Every diagnostic carries
+    its chain.</li>
+    <li><strong>The cache may never change results.</strong> Warm ==
+    cold, byte-identical, enforced by tests.</li>
+    <li><strong>Secrets are always redacted.</strong></li>
+  </ol>
+
+  <h2>Getting started</h2>
+  <pre><code>git clone https://github.com/snowbros/snowbros-inspector
+cd snowbros-inspector
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings</code></pre>
+
+  <h2>Best first contributions</h2>
+  <ul>
+    <li>False-positive reports with a minimal repro — the most valuable
+    input at this stage.</li>
+    <li>A new rule with metadata + FP-guard tests (see the rule-authoring
+    checklist in CONTRIBUTING.md).</li>
+    <li>Resolver edge cases from real projects (monorepos,
+    <code>package.json#exports</code>).</li>
+  </ul>
+
+  <p>Commits follow Conventional Commits; the changelog is generated from
+  them. Contributions are dual-licensed MIT OR Apache-2.0.</p>
+</main>
+<footer>MIT OR Apache-2.0 · © 2026 SNOWBROS Inspector Contributors</footer>
+</body>
+</html>

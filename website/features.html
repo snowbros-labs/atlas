@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Features — SNOWBROS Inspector</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <span class="brand">SNOWBROS <span class="sub">Inspector</span></span>
+  <a href="index.html">Home</a>
+  <a href="features.html" class="active">Features</a>
+  <a href="installation.html">Install</a>
+  <a href="documentation.html">Docs</a>
+  <a href="rules.html">Rules</a>
+  <a href="benchmarks.html">Benchmarks</a>
+  <a href="roadmap.html">Roadmap</a>
+  <a href="contributing.html">Contributing</a>
+  <a href="https://github.com/snowbros/snowbros-inspector">GitHub</a>
+</nav>
+<main>
+  <h1>Features</h1>
+
+  <h2>Whole-project semantic graph</h2>
+  <p>SNOWBROS scans every file, parses JS/TS/JSX/TSX with Tree-sitter, and
+  resolves every import — relative paths, <code>tsconfig.json</code> path
+  aliases (including <code>extends</code> chains), TypeScript-ESM
+  <code>./file.js</code> → <code>file.ts</code> substitution, and re-export
+  chains. The result is a graph it can query for cycles (Tarjan SCC), dead
+  files (reverse reachability from entry points), and boundary violations.</p>
+
+  <h2>Next.js server/client boundary tracking</h2>
+  <p>The flagship rule, <code>next/server-only-in-client</code>, walks the
+  graph from every client component and reports server-only code it can
+  reach — through aliases and re-exports — printing the exact import chain
+  as evidence. Companion rule <code>next/private-env-in-client</code>
+  catches non-<code>NEXT_PUBLIC</code> env vars read in client code.</p>
+
+  <h2>Deterministic auto-fix</h2>
+  <p><code>sb fix</code> plans byte-span edits from findings, then applies
+  them only if the file still matches what analysis saw. Unused
+  dependencies are removed with format-preserving <code>package.json</code>
+  surgery; unused env vars with guarded line deletion. Idempotent, proven
+  by end-to-end tests. <code>--dry-run</code> previews everything.</p>
+
+  <h2>Editor and CI integration</h2>
+  <ul>
+    <li><strong>LSP</strong>: <code>sb lsp</code> serves diagnostics over
+    stdio to any LSP-capable editor; re-analyzes on open/save in tens of
+    milliseconds warm.</li>
+    <li><strong>SARIF 2.1.0</strong>: upload to GitHub code scanning;
+    findings appear in the Security tab.</li>
+    <li><strong>CI gate</strong>: <code>sb analyze --ci</code> exits 2 on
+    High+ findings.</li>
+    <li><strong>Watch mode</strong>: <code>sb watch</code> prints only new
+    and resolved findings as you edit.</li>
+  </ul>
+
+  <h2>Explainable health score</h2>
+  <p>Findings roll up into a 0–100 scorecard across six categories with
+  documented weights (severity 25/15/8/3/1 × confidence 1.0/0.7/0.4/0.2) —
+  every point of deduction traceable to a finding.</p>
+
+  <h2>Config that means what it says</h2>
+  <pre><code>[analysis]
+min_severity = "low"
+min_confidence = "possible"
+
+[rules]
+disable = ["exports/*"]      # category globs
+enable  = ["exports/unused-export"]  # enable wins</code></pre>
+  <p>An invalid config is a hard error, never silently ignored.</p>
+</main>
+<footer>MIT OR Apache-2.0 · © 2026 SNOWBROS Inspector Contributors</footer>
+</body>
+</html>

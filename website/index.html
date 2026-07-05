@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SNOWBROS Inspector — deterministic static analysis for JS/TS</title>
+<meta name="description" content="A compiler for engineering problems: deterministic whole-project analysis for JavaScript/TypeScript, written in Rust.">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❄</text></svg>">
+</head>
+<body>
+<nav>
+  <span class="brand">SNOWBROS <span class="sub">Inspector</span></span>
+  <a href="index.html" class="active">Home</a>
+  <a href="features.html">Features</a>
+  <a href="installation.html">Install</a>
+  <a href="documentation.html">Docs</a>
+  <a href="rules.html">Rules</a>
+  <a href="benchmarks.html">Benchmarks</a>
+  <a href="roadmap.html">Roadmap</a>
+  <a href="contributing.html">Contributing</a>
+  <a href="https://github.com/snowbros/snowbros-inspector">GitHub</a>
+</nav>
+<main>
+  <h1>Same code in.<br>Same findings out.<br>Every time.</h1>
+  <p class="tagline">SNOWBROS Inspector is a deterministic static-analysis
+  engine for JavaScript/TypeScript, written in Rust. It maps your whole
+  project — imports, exports, env vars, framework boundaries — and reports
+  problems it can <strong>prove</strong>, with the evidence attached.</p>
+
+  <div class="cta">
+    <a class="btn primary" href="installation.html">Get started</a>
+    <a class="btn ghost" href="https://github.com/snowbros/snowbros-inspector">Star on GitHub</a>
+  </div>
+
+  <pre><code>npx snowbros analyze</code></pre>
+
+  <div class="term">
+<span class="dim">$</span> sb analyze<br>
+SNOWBROS Inspector · analyze<br>
+&nbsp;&nbsp;root: /work/acme-web · files scanned: 512 · frameworks: Next.js 15.1.0<br>
+<br>
+<span class="sev-high">HIGH</span> Server-only module imported by a client component <span class="dim">[next/server-only-in-client]</span><br>
+&nbsp;&nbsp;at src/components/Dashboard.tsx · confidence: certain<br>
+&nbsp;&nbsp;&nbsp;&nbsp;- import chain: Dashboard.tsx → lib/metrics.ts → lib/db.ts ("server-only")<br>
+<span class="sev-med">MEDIUM</span> Unresolved relative import <span class="dim">[imports/unresolved-import]</span><br>
+<span class="sev-low">LOW</span> Unused dependency "left-pad" <span class="dim">[deps/unused-dependency] · auto-fixable</span><br>
+<br>
+<span class="ok">◆</span> health: 87/100 <span class="dim">(security 100, architecture 74, …)</span>
+  </div>
+
+  <div class="cards">
+    <div class="card"><h3>Deterministic by construction</h3><p>No AI in the
+    loop, no timestamps, no network. Warm-cache output is byte-identical to
+    a cold run — enforced by tests.</p></div>
+    <div class="card"><h3>Milliseconds, not minutes</h3><p>Rust +
+    Tree-sitter + incremental cache: axios (431 files) in ~230 ms cold,
+    ~76 ms warm. Run it on every save.</p></div>
+    <div class="card"><h3>Evidence, not vibes</h3><p>Every finding carries
+    the chain that produced it and a confidence level. Anything unprovable
+    is labeled unresolved — never guessed.</p></div>
+    <div class="card"><h3>Fixes it can prove</h3><p><code>sb fix</code>
+    applies guarded, idempotent edits for unused deps and env vars. Files
+    that drifted are skipped, not clobbered.</p></div>
+    <div class="card"><h3>Meets you everywhere</h3><p>LSP server for your
+    editor, SARIF for GitHub code scanning, watch mode for your terminal,
+    JSON/Markdown/HTML for everything else.</p></div>
+    <div class="card"><h3>Proven on real code</h3><p>Finds the two real
+    import cycles in zod and the type-level cycle in fastify — see the
+    <a href="benchmarks.html">dogfood reports</a>.</p></div>
+  </div>
+</main>
+<footer>MIT OR Apache-2.0 · © 2026 SNOWBROS Inspector Contributors</footer>
+</body>
+</html>

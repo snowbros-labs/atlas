@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation — SNOWBROS Inspector</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <span class="brand">SNOWBROS <span class="sub">Inspector</span></span>
+  <a href="index.html">Home</a>
+  <a href="features.html">Features</a>
+  <a href="installation.html">Install</a>
+  <a href="documentation.html" class="active">Docs</a>
+  <a href="rules.html">Rules</a>
+  <a href="benchmarks.html">Benchmarks</a>
+  <a href="roadmap.html">Roadmap</a>
+  <a href="contributing.html">Contributing</a>
+  <a href="https://github.com/snowbros/snowbros-inspector">GitHub</a>
+</nav>
+<main>
+  <h1>Documentation</h1>
+
+  <h2>Commands</h2>
+  <table>
+    <tr><th>Command</th><th>What it does</th></tr>
+    <tr><td>sb init</td><td>Write a starter <code>snowbros.toml</code></td></tr>
+    <tr><td>sb analyze</td><td>Full analysis; <code>--format terminal|json|markdown|sarif|html</code></td></tr>
+    <tr><td>sb analyze --ci</td><td>Exit 2 when High+ findings exist</td></tr>
+    <tr><td>sb analyze --no-cache</td><td>Force a cold run</td></tr>
+    <tr><td>sb watch</td><td>Continuous analysis; prints only deltas</td></tr>
+    <tr><td>sb fix</td><td>Deterministic auto-fixes; <code>--dry-run</code>, <code>--rule</code>, <code>--file</code></td></tr>
+    <tr><td>sb graph --format dot</td><td>Export semantic graph (Graphviz)</td></tr>
+    <tr><td>sb explain RULE_ID</td><td>Rule logic + false-positive guards</td></tr>
+    <tr><td>sb lsp</td><td>LSP server over stdio</td></tr>
+  </table>
+
+  <h2>CI recipe (GitHub Actions)</h2>
+  <pre><code>- run: npx snowbros analyze --format sarif > snowbros.sarif
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: snowbros.sarif
+- run: npx snowbros analyze --ci   # gate on High+ findings</code></pre>
+
+  <h2>Configuration</h2>
+  <pre><code>[analysis]
+min_severity = "low"          # info|low|medium|high|critical
+min_confidence = "possible"   # possible|likely|certain
+
+[rules]
+disable = ["exports/*", "graph/dead-file"]
+enable  = ["exports/unused-export"]   # enable > disable > thresholds</code></pre>
+
+  <h2>Reference documents</h2>
+  <ul>
+    <li><a href="https://github.com/snowbros/snowbros-inspector/blob/master/docs/INSTALL.md">Install guide</a> — all platforms + editor LSP wiring</li>
+    <li><a href="https://github.com/snowbros/snowbros-inspector/blob/master/docs/EXAMPLES.md">Real-world examples</a> — zod, axios, fastify reports</li>
+    <li><a href="https://github.com/snowbros/snowbros-inspector/blob/master/ARCHITECTURE.md">Architecture</a> — full engine design</li>
+    <li><a href="https://github.com/snowbros/snowbros-inspector/blob/master/CONTRIBUTING.md">Contributing</a> — determinism ground rules</li>
+  </ul>
+</main>
+<footer>MIT OR Apache-2.0 · © 2026 SNOWBROS Inspector Contributors</footer>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rules — SNOWBROS Inspector</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <span class="brand">SNOWBROS <span class="sub">Inspector</span></span>
+  <a href="index.html">Home</a>
+  <a href="features.html">Features</a>
+  <a href="installation.html">Install</a>
+  <a href="documentation.html">Docs</a>
+  <a href="rules.html" class="active">Rules</a>
+  <a href="benchmarks.html">Benchmarks</a>
+  <a href="roadmap.html">Roadmap</a>
+  <a href="contributing.html">Contributing</a>
+  <a href="https://github.com/snowbros/snowbros-inspector">GitHub</a>
+</nav>
+<main>
+  <h1>Rules</h1>
+  <p>Eleven rules at launch. Accuracy beats quantity: every rule documents
+  its false-positive guards, anything unprovable is labeled unresolved, and
+  <code>sb explain &lt;rule-id&gt;</code> prints the full reasoning.</p>
+
+  <table>
+    <tr><th>Rule</th><th>Severity</th><th>Confidence</th><th>Auto-fix</th></tr>
+    <tr><td>security/no-eval</td><td class="sev-high">High</td><td>Certain</td><td>—</td></tr>
+    <tr><td>security/hardcoded-secret</td><td class="sev-high">High</td><td>Likely</td><td>—</td></tr>
+    <tr><td>next/server-only-in-client</td><td class="sev-high">High</td><td>Certain</td><td>—</td></tr>
+    <tr><td>next/private-env-in-client</td><td class="sev-high">High</td><td>Likely</td><td>—</td></tr>
+    <tr><td>graph/no-circular-imports</td><td class="sev-high">High</td><td>Certain</td><td>—</td></tr>
+    <tr><td>imports/unresolved-import</td><td class="sev-med">Medium</td><td>Likely</td><td>—</td></tr>
+    <tr><td>next/forced-dynamic</td><td class="sev-low">Info</td><td>Certain</td><td>—</td></tr>
+    <tr><td>deps/unused-dependency</td><td class="sev-low">Low</td><td>Likely</td><td class="ok">✓</td></tr>
+    <tr><td>env/unused-env-var</td><td class="sev-low">Low</td><td>Possible</td><td class="ok">✓</td></tr>
+    <tr><td>exports/unused-export</td><td class="sev-low">Low</td><td>Possible</td><td>—</td></tr>
+    <tr><td>graph/dead-file</td><td class="sev-low">Low</td><td>Possible</td><td>—</td></tr>
+  </table>
+
+  <h2>Severity and confidence</h2>
+  <p>Severity says how much a finding matters; confidence says how sure the
+  engine is. <em>Certain</em> findings are structural facts (a cycle exists
+  or it doesn't). <em>Possible</em> findings are honest hedges — a "dead"
+  file might be loaded by a runtime convention the graph can't see, so it
+  reports Low/Possible, and one config line silences the category if it's
+  noise for your project.</p>
+
+  <h2>Secrets are redacted</h2>
+  <p>Hardcoded-secret findings never print the value — a four-character
+  redacted preview only, in every output format including SARIF and JSON.</p>
+</main>
+<footer>MIT OR Apache-2.0 · © 2026 SNOWBROS Inspector Contributors</footer>
+</body>
+</html>

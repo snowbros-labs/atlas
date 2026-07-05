@@ -21,9 +21,16 @@ project adheres to [Semantic Versioning](https://semver.org).
 - Next.js server/client boundary rules (11 rules total)
 - `snowbros fix` — deterministic auto-fixes
 - LSP server and shared analysis engine
+- Cargo-dist release pipeline with changelog automation
+- Npm wrapper — npx snowbros / sb on all platforms
 
 ### Bug Fixes
 
 - Box the fat Lookup::Fresh variant
 - Collapse nested if in fix applier (clippy)
+- TypeScript-ESM extension substitution in the resolver
+
+### Documentation
+
+- Production README, install guide, contributing, releasing
 

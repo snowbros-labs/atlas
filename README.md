@@ -3,13 +3,27 @@
 **Deterministic engineering intelligence for JavaScript/TypeScript codebases.**
 
 [![CI](https://github.com/snowbros/snowbros-inspector/actions/workflows/ci.yml/badge.svg)](https://github.com/snowbros/snowbros-inspector/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/snowbros/snowbros-inspector)](https://github.com/snowbros/snowbros-inspector/releases)
+[![npm](https://img.shields.io/npm/v/snowbros)](https://www.npmjs.com/package/snowbros)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+[![Rust](https://img.shields.io/badge/rust-1.96-orange.svg)](rust-toolchain.toml)
 
-SNOWBROS Inspector understands an entire project — files, imports, exports,
-environment variables, frameworks — and detects engineering problems with
-evidence. It behaves like a compiler for engineering issues: **same codebase
-in, same findings out, every time.** No AI decides whether an issue exists;
-every finding is backed by a deterministic analysis you can replay.
+```sh
+npx snowbros analyze
+```
+
+SNOWBROS Inspector maps your entire project — every import, export, env
+var, and framework boundary — and reports problems it can **prove**:
+circular imports, dead files, server-only code leaking into Next.js client
+components, unused dependencies, hardcoded secrets. It behaves like a
+compiler for engineering issues: **same codebase in, same findings out,
+every time.** No AI decides whether an issue exists; every finding carries
+the evidence chain that produced it.
+
+Run on axios (431 files): **~230 ms cold, ~76 ms warm, health 97/100.**
+Run on zod: it finds the two real circular-import cycles in `v3` and
+`v4/core` — certain, with the cycle members listed.
+More: [real-world examples](docs/EXAMPLES.md).
 
 <!-- TODO: demo GIF — `sb analyze` on a real Next.js repo -->
 <!-- ![sb analyze demo](docs/assets/demo.gif) -->
@@ -185,17 +199,37 @@ Findings appear in the GitHub Security tab with rule metadata. Use
 
 ## Performance
 
+Real open-source repositories (release build; details in
+[docs/EXAMPLES.md](docs/EXAMPLES.md)):
+
+| Repository | Files | Cold | Warm |
+|---|---|---|---|
+| zod | 554 | ~605 ms | ~88 ms |
+| axios | 431 | ~230 ms | ~76 ms |
+| fastify | 355 | ~365 ms | ~103 ms |
+
 Criterion benchmarks on a generated 200-file TypeScript project
-(~200 lines/file), release profile:
+(~200 lines/file): ~162 ms cold, ~5.3 ms warm. Single-file change on a
+500-file repo: ~34 ms. Warm output is byte-identical to cold output —
+the cache can never change results, only skip work.
 
-| Scenario | Time |
-|---|---|
-| Cold (no cache) | ~162 ms |
-| Warm (cache primed) | ~5.3 ms |
+## How it compares
 
-Real-world 500-file repo: ~270 ms cold / ~43 ms warm / ~34 ms after a
-single-file change. Warm output is byte-identical to cold output — the
-cache can never change results, only skip work.
+| | SNOWBROS | ESLint | Knip | dependency-cruiser | Madge |
+|---|---|---|---|---|---|
+| Whole-project semantic graph | ✅ | ❌ per-file | partial | ✅ | ✅ |
+| Circular imports | ✅ certain, cycle listed | plugin | ❌ | ✅ | ✅ |
+| Dead files / unused exports | ✅ | ❌ | ✅ | partial | orphans |
+| Unused dependencies | ✅ + auto-fix | ❌ | ✅ | ❌ | ❌ |
+| Next.js server/client boundary | ✅ chain evidence | partial plugin | ❌ | ❌ | ❌ |
+| Secrets / eval | ✅ redacted | plugin | ❌ | ❌ | ❌ |
+| Deterministic, evidence-first output | ✅ by design | mostly | mostly | mostly | mostly |
+| SARIF / LSP / watch / health score | ✅ all built in | LSP via editor | ❌ | ❌ | ❌ |
+| Runtime | native binary | Node | Node | Node | Node |
+
+Not a linter replacement: SNOWBROS doesn't do stylistic or per-file
+correctness rules — run it *alongside* ESLint/Biome. Its territory is
+project structure: the graph, the boundaries, the manifest.
 
 ## Architecture
 

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap — SNOWBROS Inspector</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <span class="brand">SNOWBROS <span class="sub">Inspector</span></span>
+  <a href="index.html">Home</a>
+  <a href="features.html">Features</a>
+  <a href="installation.html">Install</a>
+  <a href="documentation.html">Docs</a>
+  <a href="rules.html">Rules</a>
+  <a href="benchmarks.html">Benchmarks</a>
+  <a href="roadmap.html" class="active">Roadmap</a>
+  <a href="contributing.html">Contributing</a>
+  <a href="https://github.com/snowbros/snowbros-inspector">GitHub</a>
+</nav>
+<main>
+  <h1>Roadmap</h1>
+  <p>Direction, not promises. Ordering reflects current priorities;
+  0.x minor versions may include breaking CLI/output changes per SemVer.</p>
+
+  <h2>Near term</h2>
+  <ul>
+    <li><strong>Pattern rule engine</strong> — Semgrep-style
+    <code>$VAR</code> patterns in YAML, so new rules don't require Rust.</li>
+    <li><strong>More rules</strong> toward 20–50: N+1 query detection,
+    oversized components, prop drilling, hydration hazards, unprotected
+    routes, SEO/a11y structure.</li>
+    <li><strong>Resolver: <code>package.json#main</code>/<code>exports</code></strong>
+    for directory and package-root imports (removes the fastify-style
+    unresolved findings).</li>
+    <li><strong>Monorepo awareness</strong> — multiple package.json
+    workspaces as first-class projects.</li>
+    <li><strong><code>sb doctor</code></strong> and rule maturity gating
+    (nursery rules off by default).</li>
+  </ul>
+
+  <h2>Mid term</h2>
+  <ul>
+    <li><strong>Symbol-level call graph</strong> — resolution below file
+    granularity.</li>
+    <li><strong>Plugins</strong> — WASM (Extism) rule plugins.</li>
+    <li><strong>More languages</strong> — Python and Go grammars.</li>
+    <li><strong>Vulnerability DB</strong> — OSV integration for dependency
+    advisories.</li>
+  </ul>
+
+  <h2>Long term</h2>
+  <ul>
+    <li>Trend dashboard, multi-repo views.</li>
+    <li>Optional AI <em>explanation</em> layer — AI may explain findings,
+    never decide them. Determinism stays non-negotiable.</li>
+  </ul>
+</main>
+<footer>MIT OR Apache-2.0 · © 2026 SNOWBROS Inspector Contributors</footer>
+</body>
+</html>

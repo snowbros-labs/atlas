@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benchmarks — SNOWBROS Inspector</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <span class="brand">SNOWBROS <span class="sub">Inspector</span></span>
+  <a href="index.html">Home</a>
+  <a href="features.html">Features</a>
+  <a href="installation.html">Install</a>
+  <a href="documentation.html">Docs</a>
+  <a href="rules.html">Rules</a>
+  <a href="benchmarks.html" class="active">Benchmarks</a>
+  <a href="roadmap.html">Roadmap</a>
+  <a href="contributing.html">Contributing</a>
+  <a href="https://github.com/snowbros/snowbros-inspector">GitHub</a>
+</nav>
+<main>
+  <h1>Benchmarks</h1>
+
+  <h2>Real open-source repositories</h2>
+  <p>Release build, Windows x64 laptop, July 2026. Full reports in
+  <a href="https://github.com/snowbros/snowbros-inspector/blob/master/docs/EXAMPLES.md">docs/EXAMPLES.md</a>.</p>
+  <table>
+    <tr><th>Repository</th><th>Files</th><th>Cold</th><th>Warm</th><th>Findings</th><th>Health</th></tr>
+    <tr><td>colinhacks/zod</td><td>554</td><td>~605 ms</td><td>~88 ms</td><td>126 (2 real import cycles)</td><td>83</td></tr>
+    <tr><td>axios/axios</td><td>431</td><td>~230 ms</td><td>~76 ms</td><td>12</td><td>97</td></tr>
+    <tr><td>fastify/fastify</td><td>355</td><td>~365 ms</td><td>~103 ms</td><td>91 (1 type-level cycle)</td><td>73</td></tr>
+  </table>
+
+  <h2>Criterion microbenchmarks</h2>
+  <p>Generated 200-file TypeScript project, ~200 lines per file:</p>
+  <table>
+    <tr><th>Scenario</th><th>Time</th></tr>
+    <tr><td>cold (no cache)</td><td>~162 ms</td></tr>
+    <tr><td>warm (cache primed)</td><td>~5.3 ms</td></tr>
+    <tr><td>single-file change (500-file repo)</td><td>~34 ms</td></tr>
+  </table>
+
+  <h2>Why warm runs are trustworthy</h2>
+  <p>The incremental cache (xxh3 content hashes + mtime fingerprints,
+  invalidated by any config or version change) can only skip parsing —
+  never change results. An end-to-end test asserts warm output is
+  <strong>byte-identical</strong> to a cold run. If you ever find a
+  divergence, that's a release-blocking bug.</p>
+
+  <h2>Reproduce</h2>
+  <pre><code>git clone --depth 1 https://github.com/axios/axios && cd axios
+sb analyze            # cold
+sb analyze            # warm
+cargo bench -p snowbros   # criterion suite (from the SNOWBROS repo)</code></pre>
+</main>
+<footer>MIT OR Apache-2.0 · © 2026 SNOWBROS Inspector Contributors</footer>
+</body>
+</html>
