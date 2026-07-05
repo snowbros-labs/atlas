@@ -1,0 +1,38 @@
+{
+  "name": "snowbros",
+  "version": "0.1.0",
+  "description": "Deterministic engineering intelligence for JavaScript/TypeScript codebases.",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/snowbros/snowbros-inspector.git",
+    "directory": "npm"
+  },
+  "homepage": "https://github.com/snowbros/snowbros-inspector",
+  "keywords": [
+    "static-analysis",
+    "linter",
+    "typescript",
+    "javascript",
+    "nextjs",
+    "sarif",
+    "lsp",
+    "architecture"
+  ],
+  "bin": {
+    "snowbros": "bin/snowbros.js",
+    "sb": "bin/sb.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node lib/install.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
