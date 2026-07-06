@@ -23,3 +23,5 @@ checksum = "sha256"
 unix-archive = ".tar.gz"
 # Whether to install an updater program
 install-updater = false
+# Allow manual edits to generated CI (release.yml excludes vscode-* tags)
+allow-dirty = ["ci"]
