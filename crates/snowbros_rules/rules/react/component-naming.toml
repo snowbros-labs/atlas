@@ -1,0 +1,20 @@
+id = "react/component-naming"
+title = "Component not PascalCase"
+category = "react"
+severity = "low"
+confidence = "possible"
+maturity = "nursery"
+description = "Detects a function that returns JSX but is neither PascalCase nor a useX hook."
+rationale = "React uses the leading capital to tell a component apart from a host element. A JSX-returning function with a lowercase name renders nothing when used as <name/> — React reads it as an unknown DOM tag."
+recommendation = "Rename the function to PascalCase if it is a component. If it is a helper meant to be called directly (row()), you can ignore the finding."
+false_positives = "A JSX-returning helper that is always called directly rather than used as an element is legitimate — hence confidence 'possible'. Custom hooks (useX) and PascalCase components are excluded."
+references = ["https://react.dev/learn/your-first-component"]
+tags = ["react", "naming", "convention"]
+
+[[bad_examples]]
+code = "function row() { return <tr/> } // used as <row/> renders nothing"
+note = "Lowercase JSX-returning function read as a host element."
+
+[[good_examples]]
+code = "function Row() { return <tr/> }"
+note = "PascalCase component."

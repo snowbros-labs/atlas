@@ -7,6 +7,7 @@ pub mod forced_dynamic;
 pub mod hardcoded_secret;
 pub mod nextjs;
 pub mod no_eval;
+pub mod react;
 pub mod typescript;
 pub mod unresolved;
 pub mod unused_deps;

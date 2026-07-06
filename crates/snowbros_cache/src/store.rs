@@ -20,7 +20,10 @@ use crate::fingerprint::{hash_bytes, FileFingerprint};
 /// v4: facts gained directives (`use client` / `use server`).
 /// v5: entries also cache the lowered Atlas IR [`Module`], so warm runs
 ///     rebuild the semantic model without re-parsing.
-pub const CACHE_FORMAT_VERSION: u32 = 5;
+/// v6: lowering now populates `FunctionData.returns_jsx` (always `false`
+///     in v5). Bumped so a v5 cache — whose IR carries the old value —
+///     cannot serve stale React-component classifications on a warm run.
+pub const CACHE_FORMAT_VERSION: u32 = 6;
 
 /// Directory (under the project root) holding cache state.
 pub const CACHE_DIR: &str = ".snowbros";

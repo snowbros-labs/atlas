@@ -249,9 +249,65 @@ fn function_data(node: Node<'_>, parsed: &ParsedFile) -> FunctionData {
     FunctionData {
         params,
         is_async,
-        returns_jsx: false, // populated in the React milestone (M1)
+        returns_jsx: body_returns_jsx(node),
         body_span,
     }
+}
+
+/// Whether a function body syntactically returns JSX — the structural
+/// signal the semantic layer uses to recognize a React component. Covers
+/// arrow expression bodies (`() => <div/>`, possibly parenthesized) and
+/// `return <jsx>` in a block body. Nested function bodies are skipped:
+/// their `return`s belong to them, not to the enclosing function.
+fn body_returns_jsx(func: Node<'_>) -> bool {
+    let Some(body) = func.child_by_field_name("body") else {
+        return false;
+    };
+    // Arrow with an expression body that is (parenthesized) JSX.
+    if is_jsx_expr(body) {
+        return true;
+    }
+    block_returns_jsx(body)
+}
+
+/// Whether a node is a JSX expression, unwrapping one layer of parentheses.
+fn is_jsx_expr(node: Node<'_>) -> bool {
+    match node.kind() {
+        "jsx_element" | "jsx_self_closing_element" | "jsx_fragment" => true,
+        "parenthesized_expression" => node.named_child(0).map(is_jsx_expr).unwrap_or(false),
+        _ => false,
+    }
+}
+
+/// Depth-first search for a `return <jsx>` that is not inside a nested
+/// function.
+fn block_returns_jsx(node: Node<'_>) -> bool {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        match child.kind() {
+            // A nested function's returns are its own — do not descend.
+            "function_declaration"
+            | "generator_function_declaration"
+            | "function"
+            | "function_expression"
+            | "arrow_function"
+            | "generator_function"
+            | "method_definition" => continue,
+            "return_statement" => {
+                if let Some(arg) = child.named_child(0) {
+                    if is_jsx_expr(arg) {
+                        return true;
+                    }
+                }
+            }
+            _ => {
+                if block_returns_jsx(child) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 
 /// Parameter names in order. Destructured parameters are recorded as `{}`
@@ -544,6 +600,38 @@ export default class D { m() {} }
         let first = serde_json::to_string(&lower_src(src, Language::Tsx, "x.tsx")).unwrap();
         let second = serde_json::to_string(&lower_src(src, Language::Tsx, "x.tsx")).unwrap();
         assert_eq!(first, second);
+    }
+
+    fn returns_jsx(src: &str) -> bool {
+        let m = lower_src(src, Language::Tsx, "c.tsx");
+        match &m.symbols[0].kind {
+            SymbolKind::Function(f) => f.returns_jsx,
+            other => panic!("expected function, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn detects_jsx_return_forms() {
+        // Block body with `return <jsx>`.
+        assert!(returns_jsx(
+            "export function A() { const x = 1; return <div>{x}</div>; }"
+        ));
+        // Arrow with a parenthesized JSX body.
+        assert!(returns_jsx("export const B = () => (<span />);"));
+        // Arrow with a bare self-closing JSX body.
+        assert!(returns_jsx("export const C = () => <br/>;"));
+        // Fragment.
+        assert!(returns_jsx("export function D() { return <>hi</>; }"));
+    }
+
+    #[test]
+    fn non_jsx_functions_are_not_components() {
+        assert!(!returns_jsx("export function useThing() { return 42; }"));
+        assert!(!returns_jsx("export const add = (a, b) => a + b;"));
+        // A nested function returning JSX must not mark the outer one.
+        assert!(!returns_jsx(
+            "export function makeRender() { return function r() { return <i/>; }; }"
+        ));
     }
 
     #[test]
