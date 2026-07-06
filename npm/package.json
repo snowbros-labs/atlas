@@ -1,6 +1,6 @@
 {
   "name": "@snowbros/atlas",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "Deterministic engineering intelligence for JavaScript/TypeScript codebases.",
   "license": "MIT OR Apache-2.0",
   "author": "Snowbros Atlas Contributors",
