@@ -1,0 +1,18 @@
+[package]
+name = "snowbros_ir"
+description = "Atlas IR: the language-agnostic intermediate representation every parser lowers into. Rules read Atlas concepts (Function, Call, Import, Symbol) rather than language-specific syntax trees."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+snowbros_core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+camino = { workspace = true }
+
+[lints]
+workspace = true

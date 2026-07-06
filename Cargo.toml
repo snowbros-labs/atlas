@@ -13,6 +13,7 @@ rust-version = "1.85"
 [workspace.dependencies]
 # Internal crates
 snowbros_core = { path = "crates/snowbros_core", version = "0.1.1" }
+snowbros_ir = { path = "crates/snowbros_ir", version = "0.1.1" }
 snowbros_parser = { path = "crates/snowbros_parser", version = "0.1.1" }
 snowbros_framework = { path = "crates/snowbros_framework", version = "0.1.1" }
 snowbros_scanner = { path = "crates/snowbros_scanner", version = "0.1.1" }
