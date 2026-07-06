@@ -1,0 +1,71 @@
+name: Publish npm wrappers
+
+# Fires after cargo-dist's Release workflow publishes the GitHub Release for a
+# vX.Y.Z tag. That release carries the platform binaries the wrappers download,
+# so publishing npm here guarantees the binaries exist first. Skips vscode-*
+# releases (handled by vscode-release.yml) and prereleases.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  publish-npm:
+    if: ${{ !startsWith(github.event.release.tag_name, 'vscode-') && !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Derive version from tag
+        id: ver
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Publishing npm wrappers for version: $VERSION"
+
+      - name: Verify wrapper versions match tag
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          for dir in npm npm-unscoped; do
+            PKG_VERSION="$(node -p "require('./$dir/package.json').version")"
+            if [ "$PKG_VERSION" != "$VERSION" ]; then
+              echo "ERROR: $dir/package.json version ($PKG_VERSION) != tag ($VERSION)"
+              exit 1
+            fi
+          done
+
+      # Publish the scoped package first: the unscoped wrapper depends on
+      # @snowbros/atlas at the exact version, so it must resolve at install time.
+      # Skip (do not fail) if the version is already on the registry, so reruns
+      # are idempotent.
+      - name: Publish @snowbros/atlas
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          if npm view "@snowbros/atlas@$VERSION" version >/dev/null 2>&1; then
+            echo "@snowbros/atlas@$VERSION already published, skipping."
+          else
+            npm publish ./npm --access public
+          fi
+
+      - name: Publish snowbros (unscoped)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          if npm view "snowbros@$VERSION" version >/dev/null 2>&1; then
+            echo "snowbros@$VERSION already published, skipping."
+          else
+            npm publish ./npm-unscoped --access public
+          fi
