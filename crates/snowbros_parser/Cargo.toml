@@ -10,6 +10,7 @@ rust-version.workspace = true
 
 [dependencies]
 snowbros_core = { workspace = true }
+snowbros_ir = { workspace = true }
 serde = { workspace = true }
 camino = { workspace = true }
 thiserror = { workspace = true }
