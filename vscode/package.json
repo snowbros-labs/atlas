@@ -2,7 +2,7 @@
   "name": "snowbros-atlas",
   "displayName": "Snowbros Atlas",
   "description": "Deterministic engineering intelligence for JavaScript/TypeScript — circular imports, dead files, Next.js boundary leaks, unused deps, and secrets, live in your editor.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "snowbros",
   "license": "MIT OR Apache-2.0",
   "icon": "media/icon.png",

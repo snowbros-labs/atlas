@@ -4,6 +4,16 @@ All notable changes to the Snowbros Atlas VS Code extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.2]
+
+### Fixed
+
+- Windows: `spawn EINVAL` toast from the Analyze / Open Report / Explain Rule
+  / Show Health commands when Atlas was installed as an npm global (`.cmd`
+  shim) or reached via the `npx` fallback. The CLI spawn now routes Windows
+  batch shims through the shell (matching the language-server launch), so real
+  `sb.exe` binaries still spawn directly. Diagnostics were never affected.
+
 ## [0.2.1]
 
 ### Changed
