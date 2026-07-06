@@ -63,7 +63,13 @@ enum Command {
         dry_run: bool,
     },
     /// Start the Language Server Protocol server (stdio) for editors.
-    Lsp,
+    Lsp {
+        /// Use stdio transport (default, and only, transport). Accepted for
+        /// compatibility with vscode-languageclient, which always passes
+        /// `--stdio`. The value is ignored; the server always uses stdio.
+        #[arg(long)]
+        stdio: bool,
+    },
     /// Explain a rule: what it detects, why, and how to fix findings.
     Explain {
         /// Rule id, e.g. `security/no-eval`.
@@ -104,7 +110,7 @@ pub fn run() -> ExitCode {
             files,
             dry_run,
         } => commands::fix::run(path, rules, files, dry_run),
-        Command::Lsp => snowbros_lsp::run_stdio().map(|()| ExitCode::SUCCESS),
+        Command::Lsp { stdio: _ } => snowbros_lsp::run_stdio().map(|()| ExitCode::SUCCESS),
         Command::Explain { rule_id } => commands::explain::run(&rule_id),
         Command::Graph { path, format } => commands::graph::run(path, format),
     };
