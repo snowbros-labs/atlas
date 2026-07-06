@@ -11,8 +11,14 @@ pub enum GraphFormat {
     Dot,
 }
 
-/// Builds the semantic graph and prints it.
-pub fn run(path: Option<Utf8PathBuf>, format: GraphFormat) -> Result<ExitCode, String> {
+/// Builds the semantic graph and prints it. With `symbols`, exports the
+/// symbol-level graph (file → declared-symbol structure) instead of the
+/// file/package import graph.
+pub fn run(
+    path: Option<Utf8PathBuf>,
+    format: GraphFormat,
+    symbols: bool,
+) -> Result<ExitCode, String> {
     let root = match path {
         Some(p) => p,
         None => Utf8PathBuf::from_path_buf(
@@ -21,8 +27,13 @@ pub fn run(path: Option<Utf8PathBuf>, format: GraphFormat) -> Result<ExitCode, S
         .map_err(|p| format!("non-UTF-8 working directory: {}", p.display()))?,
     };
     let pipeline = snowbros_engine::pipeline::build(&root, true)?;
+    let graph = if symbols {
+        &pipeline.symbol_graph
+    } else {
+        &pipeline.graph
+    };
     match format {
-        GraphFormat::Dot => print!("{}", pipeline.graph.to_dot()),
+        GraphFormat::Dot => print!("{}", graph.to_dot()),
     }
     Ok(ExitCode::SUCCESS)
 }
