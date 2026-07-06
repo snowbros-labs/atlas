@@ -47,7 +47,7 @@ ignore = "0.4"
 rayon = "1"
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 notify = "8"
-notify-debouncer-mini = "0.6"
+notify-debouncer-mini = "0.7"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tower-lsp = "0.20"
