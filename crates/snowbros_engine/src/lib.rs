@@ -50,6 +50,8 @@ pub fn analyze(root: &Utf8PathBuf, use_cache: bool) -> Result<Analysis, String> 
             unresolved_imports: &pipeline.unresolved,
             env_declarations: &pipeline.env_declarations,
             import_bindings: &pipeline.import_bindings,
+            semantic: Some(&pipeline.semantic),
+            next_model: pipeline.next_model.as_ref(),
         },
     );
     let report = Report::new(apply_config(run_all(&ctx), &config));

@@ -169,6 +169,12 @@ impl SemanticGraph {
         self.nodes_of(|kind| matches!(kind, NodeKind::Package { .. }))
     }
 
+    /// Iterates all symbol nodes (declared functions/classes/bindings),
+    /// sorted by node id — the input to symbol-level tooling.
+    pub fn symbols(&self) -> Vec<(NodeId, &Node)> {
+        self.nodes_of(|kind| matches!(kind, NodeKind::Symbol { .. }))
+    }
+
     /// Whether a node has at least one incoming edge of the given kind.
     pub fn has_incoming(&self, id: NodeId, kind: EdgeKind) -> bool {
         self.inner

@@ -10,6 +10,7 @@ rust-version.workspace = true
 
 [dependencies]
 snowbros_core = { workspace = true }
+snowbros_ir = { workspace = true }
 snowbros_parser = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

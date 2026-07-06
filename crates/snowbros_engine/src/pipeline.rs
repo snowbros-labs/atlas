@@ -9,7 +9,7 @@
 //! Parsing is file-parallel via rayon; collection preserves scan order,
 //! so output is deterministic under any thread scheduling.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 
 use camino::Utf8PathBuf;
@@ -18,12 +18,14 @@ use tracing::debug;
 
 use snowbros_cache::FileFingerprint;
 use snowbros_cache::{config_fingerprint, hash_bytes, CacheData, CacheStats, FileEntry, Lookup};
+use snowbros_framework::nextjs::{self, NextInput, NextProjectModel};
 use snowbros_framework::{detect_frameworks, DetectedFramework, ProjectFacts};
 use snowbros_graph::{EdgeKind, Node, SemanticGraph};
-use snowbros_parser::{extract_facts, parse, FileFacts};
+use snowbros_parser::{extract_facts, lower, parse, FileFacts};
 use snowbros_resolver::{resolve, FileSet, Resolution, TsPaths};
 use snowbros_rules::{EnvDeclaration, ImportBinding, UnresolvedImport};
 use snowbros_scanner::{scan, ScanResult};
+use snowbros_semantic::SemanticModel;
 
 /// Everything the pipeline produces.
 pub struct Pipeline {
@@ -47,6 +49,17 @@ pub struct Pipeline {
     pub env_declarations: Vec<EnvDeclaration>,
     /// Resolved project-internal imports with the names they bind.
     pub import_bindings: Vec<ImportBinding>,
+    /// The project symbol model, built over lowered Atlas IR.
+    pub semantic: SemanticModel,
+    /// A dedicated graph populated with symbol-level structure (file →
+    /// symbol `Contains`/`Exports` edges). Kept separate from [`graph`]
+    /// so every existing file/package/import analyzer — and the
+    /// `sb graph` DOT export — stays byte-identical.
+    ///
+    /// [`graph`]: Pipeline::graph
+    pub symbol_graph: SemanticGraph,
+    /// The Next.js project model, when the project is a routed Next.js app.
+    pub next_model: Option<NextProjectModel>,
 }
 
 /// Root env files considered declarations (`.env.example` is docs, not
@@ -138,12 +151,16 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                                     fingerprint,
                                     content_hash,
                                     facts: Some(extract_facts(&parsed)),
+                                    // Lower to Atlas IR in the same pass so
+                                    // it rides the cache with the facts.
+                                    ir: Some(lower(&parsed, file.path.clone())),
                                     failure: None,
                                 },
                                 Err(e) => FileEntry {
                                     fingerprint,
                                     content_hash,
                                     facts: None,
+                                    ir: None,
                                     failure: Some(e.to_string()),
                                 },
                             }
@@ -152,6 +169,7 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                             fingerprint,
                             content_hash: String::new(),
                             facts: None,
+                            ir: None,
                             failure: Some(reason),
                         },
                     };
@@ -172,6 +190,7 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
     let mut next_cache = CacheData::empty(config_fp);
     let mut file_facts: BTreeMap<Utf8PathBuf, FileFacts> = BTreeMap::new();
     let mut import_bindings: Vec<ImportBinding> = Vec::new();
+    let mut ir_modules: Vec<snowbros_ir::Module> = Vec::new();
 
     for (path, entry, hit) in per_file {
         if hit {
@@ -216,6 +235,9 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
         if let Some(facts) = &entry.facts {
             file_facts.insert(path.clone(), facts.clone());
         }
+        if let Some(module) = &entry.ir {
+            ir_modules.push(module.clone());
+        }
         next_cache.files.insert(path, entry);
     }
 
@@ -233,6 +255,37 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
 
     let env_declarations = read_env_declarations(root);
 
+    // Symbol model over lowered IR. Its graph is deliberately separate
+    // from `graph` above: populating symbol nodes there would change the
+    // `sb graph` DOT export and any node-count-sensitive analyzer.
+    let semantic = SemanticModel::from_modules(ir_modules);
+    let mut symbol_graph = SemanticGraph::new();
+    semantic.populate_graph(&mut symbol_graph);
+
+    // Next.js project model, built from a deterministic snapshot: the
+    // scanned file list, files carrying `"use client"`, and each file's
+    // exported names (which surface the Metadata API / route handlers).
+    let client_files: BTreeSet<Utf8PathBuf> = file_facts
+        .iter()
+        .filter(|(_, f)| f.directives.iter().any(|d| d == "use client"))
+        .map(|(p, _)| p.clone())
+        .collect();
+    let file_exports: BTreeMap<Utf8PathBuf, BTreeSet<String>> = file_facts
+        .iter()
+        .map(|(p, f)| {
+            (
+                p.clone(),
+                f.exports.iter().map(|e| e.name.clone()).collect(),
+            )
+        })
+        .collect();
+    let files: Vec<Utf8PathBuf> = scanned.files.iter().map(|f| f.path.clone()).collect();
+    let next_model = nextjs::build(NextInput {
+        files: &files,
+        client_files: &client_files,
+        file_exports: &file_exports,
+    });
+
     Ok(Pipeline {
         scanned,
         frameworks,
@@ -244,5 +297,8 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
         file_facts,
         env_declarations,
         import_bindings,
+        semantic,
+        symbol_graph,
+        next_model,
     })
 }
