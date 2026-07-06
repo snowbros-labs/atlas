@@ -1,0 +1,20 @@
+id = "react/hook-returns-jsx"
+title = "Hook returns JSX"
+category = "react"
+severity = "medium"
+confidence = "likely"
+maturity = "nursery"
+description = "Detects a custom hook (useX name) whose body returns JSX."
+rationale = "Hooks return state, handlers, and values — not markup. A useX function that returns JSX is almost always a component that was given the hook prefix by mistake, which breaks both the Rules of Hooks and component usage."
+recommendation = "Rename it to a PascalCase component if it renders UI, or return values instead of JSX if it is genuinely a hook."
+false_positives = "Rare: a hook could construct an element to hand back as data. Confidence 'likely' reflects that the pattern is almost always a mislabeled component."
+references = ["https://react.dev/learn/reusing-logic-with-custom-hooks"]
+tags = ["react", "hooks", "naming"]
+
+[[bad_examples]]
+code = "function useCard() { return <div/> } // hook returning markup"
+note = "useX returning JSX is a mislabeled component."
+
+[[good_examples]]
+code = "function useCard() { return { open: true } }"
+note = "Hook returns values, not JSX."

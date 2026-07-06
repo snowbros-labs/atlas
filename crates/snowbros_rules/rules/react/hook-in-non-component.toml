@@ -1,0 +1,20 @@
+id = "react/hook-in-non-component"
+title = "Hook called outside a component"
+category = "react"
+severity = "high"
+confidence = "likely"
+maturity = "preview"
+description = "Detects a hook call (useX) that is not enclosed by a React component or another hook."
+rationale = "The first Rule of Hooks: hooks may only be called from React function components or custom hooks. Calling a hook from a plain function or at module top level breaks React's hook-order invariant and errors at runtime."
+recommendation = "Move the hook call into a component or a custom hook, or extract the logic into a useX hook that the component calls."
+false_positives = "Enclosure resolves to the nearest top-level declaration, so a call inside a nested closure of a component is correctly treated as valid. A non-React function coincidentally named useX and called elsewhere could match — confidence 'likely'. Namespaced calls (React.useState) are not matched."
+references = ["https://react.dev/reference/rules/rules-of-hooks"]
+tags = ["react", "hooks", "correctness"]
+
+[[bad_examples]]
+code = "function setup() { const [n] = useState(0); return n } // not a component"
+note = "Hook called from a plain function."
+
+[[good_examples]]
+code = "function Counter() { const [n] = useState(0); return <div>{n}</div> }"
+note = "Hook called from a component."
