@@ -4,6 +4,14 @@ All notable changes to the Snowbros Atlas VS Code extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.2]
+
+### Fixed
+
+- CI: release workflow no longer misfires cargo-dist on `vscode-*` tags;
+  extension now has its own tag-triggered publish pipeline
+  (`vscode-release.yml`) to the VS Code Marketplace.
+
 ## [0.1.1]
 
 ### Fixed
