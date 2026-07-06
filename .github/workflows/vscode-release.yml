@@ -61,4 +61,4 @@ jobs:
           gh release create "${{ github.ref_name }}" \
             --title "Snowbros Atlas VS Code Extension ${{ github.ref_name }}" \
             --notes "VS Code extension release. See vscode/DEVELOPMENT.md for details." \
-            vscode/snowbros-atlas.vsix
+            snowbros-atlas.vsix
