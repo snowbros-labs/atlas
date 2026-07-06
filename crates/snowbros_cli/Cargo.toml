@@ -38,7 +38,7 @@ serde_json = { workspace = true }
 assert_cmd = "2"
 predicates = "3"
 tempfile = "3"
-criterion = "0.5"
+criterion = "0.8"
 serde_json = { workspace = true }
 
 [[bench]]
