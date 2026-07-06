@@ -42,6 +42,11 @@ enum Command {
         /// Ignore and don't write the incremental cache (force cold run).
         #[arg(long)]
         no_cache: bool,
+        /// Attach the framework project model as the optional top-level
+        /// `project_model` key (JSON output). Off by default; the default
+        /// report is unchanged.
+        #[arg(long)]
+        project_model: bool,
     },
     /// Watch the project and print finding changes as they happen.
     Watch {
@@ -111,7 +116,8 @@ pub fn run() -> ExitCode {
             format,
             ci,
             no_cache,
-        } => commands::analyze::run(path, format, ci, no_cache),
+            project_model,
+        } => commands::analyze::run(path, format, ci, no_cache, project_model),
         Command::Watch { path } => commands::watch::run(path),
         Command::Fix {
             path,
