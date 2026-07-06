@@ -11,3 +11,6 @@ npm/*.tgz
 # local secrets
 env.local
 .env.local
+
+# Local secrets — never commit
+env
