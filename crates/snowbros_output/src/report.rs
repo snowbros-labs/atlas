@@ -23,6 +23,14 @@ pub struct Report {
     pub summary: Summary,
     /// Explainable category scores and overall health.
     pub scorecard: Scorecard,
+    /// Optional framework project model (the Next.js `NextProjectModel`),
+    /// attached only when explicitly requested. Held as an opaque JSON
+    /// value so this crate stays decoupled from the framework crate.
+    ///
+    /// Omitted from serialization when absent, so the default report is
+    /// byte-identical to before this field existed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_model: Option<serde_json::Value>,
 }
 
 /// Aggregated counts over a report's diagnostics.
@@ -63,7 +71,16 @@ impl Report {
             diagnostics,
             summary,
             scorecard,
+            project_model: None,
         }
+    }
+
+    /// Attaches an optional framework project model, surfacing it as the
+    /// top-level `project_model` key. Purely additive: existing fields are
+    /// untouched, and the key is absent unless this is called.
+    pub fn with_project_model(mut self, model: serde_json::Value) -> Self {
+        self.project_model = Some(model);
+        self
     }
 
     /// Whether the report contains any finding at or above `severity`.
@@ -130,5 +147,21 @@ mod tests {
         let report = Report::new(vec![diag("a.ts", 0, "perf/z", Severity::Medium)]);
         assert!(report.has_findings_at_least(Severity::Medium));
         assert!(!report.has_findings_at_least(Severity::High));
+    }
+
+    #[test]
+    fn project_model_absent_by_default() {
+        let report = Report::new(vec![]);
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(!json.contains("project_model"));
+        assert!(report.project_model.is_none());
+    }
+
+    #[test]
+    fn project_model_present_when_attached() {
+        let report = Report::new(vec![]).with_project_model(serde_json::json!({ "router": "app" }));
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(json.contains("project_model"));
+        assert!(json.contains("\"router\":\"app\""));
     }
 }

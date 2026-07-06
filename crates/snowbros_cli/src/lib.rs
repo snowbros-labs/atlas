@@ -42,6 +42,11 @@ enum Command {
         /// Ignore and don't write the incremental cache (force cold run).
         #[arg(long)]
         no_cache: bool,
+        /// Attach the framework project model as the optional top-level
+        /// `project_model` key (JSON output). Off by default; the default
+        /// report is unchanged.
+        #[arg(long)]
+        project_model: bool,
     },
     /// Watch the project and print finding changes as they happen.
     Watch {
@@ -82,6 +87,15 @@ enum Command {
         /// Export format.
         #[arg(long, value_enum, default_value = "dot")]
         format: commands::graph::GraphFormat,
+        /// Export the symbol-level graph (declared symbols and their
+        /// containing files) instead of the file/package import graph.
+        #[arg(long)]
+        symbols: bool,
+    },
+    /// Print the framework project model (Next.js) as JSON.
+    Model {
+        /// Project root (defaults to the current directory).
+        path: Option<camino::Utf8PathBuf>,
     },
 }
 
@@ -102,7 +116,8 @@ pub fn run() -> ExitCode {
             format,
             ci,
             no_cache,
-        } => commands::analyze::run(path, format, ci, no_cache),
+            project_model,
+        } => commands::analyze::run(path, format, ci, no_cache, project_model),
         Command::Watch { path } => commands::watch::run(path),
         Command::Fix {
             path,
@@ -112,7 +127,12 @@ pub fn run() -> ExitCode {
         } => commands::fix::run(path, rules, files, dry_run),
         Command::Lsp { stdio: _ } => snowbros_lsp::run_stdio().map(|()| ExitCode::SUCCESS),
         Command::Explain { rule_id } => commands::explain::run(&rule_id),
-        Command::Graph { path, format } => commands::graph::run(path, format),
+        Command::Graph {
+            path,
+            format,
+            symbols,
+        } => commands::graph::run(path, format, symbols),
+        Command::Model { path } => commands::model::run(path),
     };
     match result {
         Ok(code) => code,

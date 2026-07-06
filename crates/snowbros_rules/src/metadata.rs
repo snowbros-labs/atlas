@@ -84,9 +84,13 @@ const METADATA_SOURCES: &[&str] = &[
     include_str!("../rules/dependencies/unused-dependency.toml"),
     include_str!("../rules/environment/unused-env-var.toml"),
     include_str!("../rules/imports/unresolved-import.toml"),
+    include_str!("../rules/nextjs/client-metadata-ignored.toml"),
+    include_str!("../rules/nextjs/mixed-router.toml"),
     include_str!("../rules/performance/forced-dynamic.toml"),
     include_str!("../rules/security/hardcoded-secret.toml"),
     include_str!("../rules/security/no-eval.toml"),
+    include_str!("../rules/typescript/duplicate-declaration.toml"),
+    include_str!("../rules/typescript/unused-export.toml"),
 ];
 
 /// Registry of all rule metadata, keyed by rule id.

@@ -13,10 +13,15 @@
 pub mod detect;
 pub mod facts;
 pub mod framework;
+pub mod nextjs;
 
 pub use detect::{detect_frameworks, framework_packages};
 pub use facts::{PackageJson, ProjectFacts};
 pub use framework::{DetectedFramework, Framework};
+pub use nextjs::{
+    AppRoute, NextInput, NextProjectModel, PagesRoute, Rendering, RouteFile, RouterKind, Segment,
+    SegmentKind, SpecialFile,
+};
 
 // Re-exported so every subsystem shares the same core vocabulary.
 pub use snowbros_core as core;

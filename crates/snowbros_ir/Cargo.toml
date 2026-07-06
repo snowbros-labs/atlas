@@ -1,6 +1,6 @@
 [package]
-name = "snowbros_cache"
-description = "Persistent incremental cache: file fingerprints and cached parse results."
+name = "snowbros_ir"
+description = "Atlas IR: the language-agnostic intermediate representation every parser lowers into. Rules read Atlas concepts (Function, Call, Import, Symbol) rather than language-specific syntax trees."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,16 +10,9 @@ rust-version.workspace = true
 
 [dependencies]
 snowbros_core = { workspace = true }
-snowbros_ir = { workspace = true }
-snowbros_parser = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 camino = { workspace = true }
-xxhash-rust = { workspace = true }
-tracing = { workspace = true }
-
-[dev-dependencies]
-tempfile = "3"
 
 [lints]
 workspace = true

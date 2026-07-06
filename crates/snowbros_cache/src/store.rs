@@ -8,6 +8,7 @@ use camino::Utf8PathBuf;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
+use snowbros_ir::Module;
 use snowbros_parser::FileFacts;
 
 use crate::fingerprint::{hash_bytes, FileFingerprint};
@@ -17,7 +18,9 @@ use crate::fingerprint::{hash_bytes, FileFingerprint};
 /// v2: entries store full [`FileFacts`] instead of just imports.
 /// v3: facts gained eval calls and secret candidates.
 /// v4: facts gained directives (`use client` / `use server`).
-pub const CACHE_FORMAT_VERSION: u32 = 4;
+/// v5: entries also cache the lowered Atlas IR [`Module`], so warm runs
+///     rebuild the semantic model without re-parsing.
+pub const CACHE_FORMAT_VERSION: u32 = 5;
 
 /// Directory (under the project root) holding cache state.
 pub const CACHE_DIR: &str = ".snowbros";
@@ -35,6 +38,12 @@ pub struct FileEntry {
     /// failure reason is cached too, so broken files don't get re-parsed
     /// every run).
     pub facts: Option<FileFacts>,
+    /// Lowered Atlas IR for the file, or `None` when it failed to parse.
+    /// Cached alongside `facts` so warm runs reconstruct the semantic
+    /// model without re-parsing. `#[serde(default)]` keeps older readers
+    /// tolerant, though a version bump already discards pre-v5 caches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ir: Option<Module>,
     /// Parse/read failure message when `facts` is `None`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub failure: Option<String>,
@@ -165,6 +174,7 @@ mod tests {
             fingerprint: FileFingerprint::read(abs).unwrap(),
             content_hash: hash_bytes(content.as_bytes()),
             facts: Some(extract_facts(&parsed)),
+            ir: Some(snowbros_parser::lower(&parsed, "src/a.ts")),
             failure: None,
         }
     }

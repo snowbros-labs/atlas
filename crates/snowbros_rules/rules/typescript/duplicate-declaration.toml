@@ -1,0 +1,20 @@
+id = "typescript/duplicate-declaration"
+title = "Duplicate declaration"
+category = "typescript"
+severity = "medium"
+confidence = "likely"
+maturity = "nursery"
+description = "Detects a name declared more than once at module top level, resolved over the Atlas IR symbol model."
+rationale = "Redeclaring a top-level name shadows earlier definitions and is a hard error for const/let. It usually signals a bad merge, a copy-paste, or a rename that missed a site."
+recommendation = "Rename or remove the redeclaration so each top-level name is declared exactly once."
+false_positives = "Overload signatures and interface/namespace declaration merging are not flagged: only bodied declarations are lowered to symbols, so a redeclaration here is a genuine clash. A deliberate var re-declaration in legacy code will still be reported."
+references = []
+tags = ["correctness", "typescript", "semantic"]
+
+[[bad_examples]]
+code = "const config = load()\nconst config = fallback() // redeclares 'config'"
+note = "Two top-level declarations share a name."
+
+[[good_examples]]
+code = "function f(a: number): void\nfunction f(a: string): void\nfunction f(a: any) {}"
+note = "Overload signatures merge onto one implementation — not lowered as separate symbols."

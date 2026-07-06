@@ -10,11 +10,13 @@
 pub mod facts;
 pub mod imports;
 pub mod language;
+pub mod lowering;
 pub mod treesitter;
 
 pub use facts::{extract_facts, FileFacts, NamedItem, SecretCandidate, SecretSignal};
 pub use imports::{extract_imports, Import, ImportKind};
 pub use language::Language;
+pub use lowering::lower;
 pub use treesitter::{parse, ParseError, ParsedFile};
 
 // Re-exported so every subsystem shares the same core vocabulary.

@@ -4,9 +4,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use camino::Utf8PathBuf;
 use snowbros_core::Span;
+use snowbros_framework::nextjs::NextProjectModel;
 use snowbros_framework::{framework_packages, DetectedFramework, PackageJson};
 use snowbros_graph::SemanticGraph;
 use snowbros_parser::FileFacts;
+use snowbros_semantic::SemanticModel;
 
 /// An import the resolver could not map to a project file or package.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,6 +62,13 @@ pub struct AnalysisContext<'a> {
     pub env_declarations: &'a [EnvDeclaration],
     /// Resolved project-internal imports with bound names.
     pub import_bindings: &'a [ImportBinding],
+    /// The project symbol model over Atlas IR. `None` for legacy callers
+    /// (and older tests) that predate the semantic layer; semantic rules
+    /// treat it as an empty project.
+    pub semantic: Option<&'a SemanticModel>,
+    /// The Next.js project model, when the project is a routed Next.js
+    /// app. `None` otherwise; Next.js structural rules no-op without it.
+    pub next_model: Option<&'a NextProjectModel>,
 }
 
 /// Inputs for building an [`AnalysisContext`].
@@ -75,6 +84,10 @@ pub struct ContextInputs<'a> {
     pub env_declarations: &'a [EnvDeclaration],
     /// Resolved project-internal imports with bound names.
     pub import_bindings: &'a [ImportBinding],
+    /// The project symbol model over Atlas IR, when available.
+    pub semantic: Option<&'a SemanticModel>,
+    /// The Next.js project model, when available.
+    pub next_model: Option<&'a NextProjectModel>,
 }
 
 impl<'a> AnalysisContext<'a> {
@@ -99,6 +112,8 @@ impl<'a> AnalysisContext<'a> {
             file_facts,
             env_declarations: inputs.env_declarations,
             import_bindings: inputs.import_bindings,
+            semantic: inputs.semantic,
+            next_model: inputs.next_model,
         }
     }
 }

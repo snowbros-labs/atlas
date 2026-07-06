@@ -34,6 +34,7 @@ pub fn run(
     format: Format,
     ci: bool,
     no_cache: bool,
+    project_model: bool,
 ) -> Result<ExitCode, String> {
     let root = match path {
         Some(p) => p,
@@ -44,7 +45,15 @@ pub fn run(
     };
 
     let analysis = snowbros_engine::analyze(&root, !no_cache)?;
-    let (pipeline, report) = (analysis.pipeline, analysis.report);
+    let (pipeline, mut report) = (analysis.pipeline, analysis.report);
+
+    // Optional, opt-in: surface the framework project model as a top-level
+    // key. Absent unless requested, so the default report is unchanged.
+    if project_model {
+        let value = serde_json::to_value(&pipeline.next_model)
+            .map_err(|e| format!("failed to serialize project model: {e}"))?;
+        report = report.with_project_model(value);
+    }
 
     match format {
         Format::Json => println!("{}", json::render(&report)),
