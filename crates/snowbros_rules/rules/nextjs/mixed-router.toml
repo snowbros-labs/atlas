@@ -1,0 +1,20 @@
+id = "next/mixed-router"
+title = "Mixed App and Pages routers"
+category = "nextjs"
+severity = "low"
+confidence = "certain"
+maturity = "nursery"
+description = "Detects a project that uses both the App Router (app/) and the Pages Router (pages/) at once."
+rationale = "Mixing routers is supported during migration but doubles the routing surface, and the two routers have different data-fetching, layout, and rendering models — an ongoing source of confusion and duplicated logic."
+recommendation = "Finish the migration to a single router (usually the App Router) and remove the other directory."
+false_positives = "Intentional, long-lived incremental migrations will be flagged. Confidence is 'certain' because the condition is a structural fact; severity is 'low' because the setup is valid Next.js."
+references = ["https://nextjs.org/docs/app/building-your-application/upgrading/app-router-migration"]
+tags = ["nextjs", "architecture", "migration"]
+
+[[bad_examples]]
+code = "app/page.tsx + pages/about.tsx // both routers present"
+note = "App and Pages routers coexist."
+
+[[good_examples]]
+code = "app/page.tsx only // single router"
+note = "One router, no ambiguity."

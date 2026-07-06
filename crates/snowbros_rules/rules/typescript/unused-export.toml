@@ -1,0 +1,20 @@
+id = "typescript/unused-export"
+title = "Unused export"
+category = "typescript"
+severity = "low"
+confidence = "possible"
+maturity = "nursery"
+description = "Detects exported symbols that no importer of the file ever binds, resolved over the Atlas IR symbol model."
+rationale = "Unused exports block tree-shaking, inflate bundles, and present a public-looking surface for dead code. Resolving at the symbol level lets the finding carry the stable symbol id."
+recommendation = "Drop the export keyword to keep the symbol private, or delete it if nothing uses it internally either."
+false_positives = "Public library APIs and tooling-consumed exports are invisible to the import graph — hence confidence 'possible'. Namespace (* as ns), export *, and side-effect importers mark all exports used; entry/config/declaration files are excluded; unimported files are left to graph/dead-file. Overlaps with the textual exports/unused-export rule and can be disabled if that one is preferred."
+references = []
+tags = ["dead-code", "tree-shaking", "typescript", "semantic"]
+
+[[bad_examples]]
+code = "export const orphan = 42 // importers only bind other names"
+note = "Exported symbol never bound by any importer."
+
+[[good_examples]]
+code = "import * as util from './util' // marks every export used"
+note = "Namespace imports consume the whole module surface."

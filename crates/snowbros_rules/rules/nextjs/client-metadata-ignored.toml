@@ -1,0 +1,20 @@
+id = "next/client-metadata-ignored"
+title = "Metadata ignored in Client Component"
+category = "nextjs"
+severity = "medium"
+confidence = "certain"
+maturity = "nursery"
+description = "Detects an App-Router page or layout that is a Client Component (\"use client\") yet exports the Metadata API (metadata or generateMetadata)."
+rationale = "Next.js only reads the Metadata API from Server Components. In a Client Component the metadata / generateMetadata export is silently ignored, so the SEO tags never render — a bug that no error surfaces."
+recommendation = "Move the metadata export to a Server Component (a parent layout or a server page) and keep interactive logic in a nested Client Component."
+false_positives = "None expected: this is a structural fact derived from the file's \"use client\" directive and its exported names. Confidence is 'certain'."
+references = ["https://nextjs.org/docs/app/building-your-application/optimizing/metadata"]
+tags = ["nextjs", "seo", "correctness"]
+
+[[bad_examples]]
+code = "\"use client\"\nexport const metadata = { title: 'Home' } // ignored"
+note = "Metadata export in a Client Component never renders."
+
+[[good_examples]]
+code = "export const metadata = { title: 'Home' } // server page, no 'use client'"
+note = "Metadata honored in a Server Component."
