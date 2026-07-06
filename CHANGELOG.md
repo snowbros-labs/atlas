@@ -4,6 +4,17 @@ All notable changes to Snowbros Atlas are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com) and the
 project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.1.1] - 2026-07-06
+
+### Bug Fixes
+
+- Accept the standard `--stdio` flag on `snowbros lsp` for VS Code
+  compatibility. vscode-languageclient launches the server as
+  `snowbros lsp --stdio`; the flag is now accepted (and ignored, since
+  stdio is the only transport) instead of being rejected by the CLI
+  parser. Fixes the language server failing to start in the VS Code
+  extension.
+
 ## [0.1.0] - 2026-07-05
 
 
