@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import type { Logger } from "./logger";
 import type { AtlasConfig } from "./config";
 import { rustLogFilter } from "./config";
-import { resolveExecutable } from "./resolve";
+import { resolveExecutable, needsShell } from "./resolve";
 
 export interface CliResult {
   code: number;
@@ -36,13 +36,21 @@ export function runCli(
   const res = resolveExecutable(config.path);
   const fullArgs = [...res.baseArgs, ...args];
   const rustLog = rustLogFilter(config.logLevel);
-  log.debug(`run (${res.source}): ${res.command} ${fullArgs.join(" ")}`);
+  // On Windows a `.cmd`/`.bat` shim (e.g. the `snowbros.cmd`/`sb.cmd` wrappers
+  // npm installs globally, or the `npx.cmd` fallback) must be spawned through
+  // the shell: Node rejects a direct spawn of a batch script with EINVAL since
+  // the CVE-2024-27980 fix. Real executables (`sb.exe`) spawn directly. This
+  // mirrors the language-server launch in client.ts so both paths agree.
+  const shell = needsShell(res.command);
+  log.debug(
+    `run (${res.source}, shell=${shell}): ${res.command} ${fullArgs.join(" ")}`,
+  );
 
   return new Promise((resolve, reject) => {
     let settled = false;
     const child = spawn(res.command, fullArgs, {
       cwd,
-      shell: false,
+      shell,
       env: rustLog ? { ...process.env, RUST_LOG: rustLog } : process.env,
     });
 
