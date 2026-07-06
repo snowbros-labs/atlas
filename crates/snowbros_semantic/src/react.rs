@@ -32,7 +32,7 @@ fn is_pascal_case(name: &str) -> bool {
 
 /// Whether a name is a custom-hook name: `use` followed by an uppercase
 /// letter or digit (`useState`, `use2fa`) — the React naming contract.
-fn is_hook_name(name: &str) -> bool {
+pub fn is_hook_name(name: &str) -> bool {
     name.strip_prefix("use")
         .and_then(|rest| rest.chars().next())
         .is_some_and(|c| c.is_ascii_uppercase() || c.is_ascii_digit())

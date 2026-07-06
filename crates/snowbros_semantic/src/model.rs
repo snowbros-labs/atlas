@@ -6,7 +6,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 
 use snowbros_core::Span;
 use snowbros_graph::{EdgeKind, Node, SemanticGraph};
-use snowbros_ir::{Module, Symbol, SymbolId};
+use snowbros_ir::{Module, Symbol, SymbolId, SymbolKind};
 
 /// A symbol together with the module that declares it.
 ///
@@ -87,6 +87,34 @@ impl SemanticModel {
             }
         }
         out
+    }
+
+    /// The top-level function symbol whose body span encloses the byte
+    /// range `[start_byte, end_byte)` in `module`, if any — a minimal
+    /// call-enclosure resolution (the caller side of a future call-graph
+    /// edge). Nested closures resolve to their nearest *top-level*
+    /// declaration, which is sufficient for reachability-style rules and
+    /// never yields a false enclosure.
+    pub fn enclosing_symbol(
+        &self,
+        module: impl AsRef<Utf8Path>,
+        start_byte: u32,
+        end_byte: u32,
+    ) -> Option<SymbolRef<'_>> {
+        let (path, m) = self.modules.get_key_value(module.as_ref())?;
+        for symbol in &m.symbols {
+            if let SymbolKind::Function(data) = &symbol.kind {
+                if let Some(body) = data.body_span {
+                    if body.start_byte <= start_byte && end_byte <= body.end_byte {
+                        return Some(SymbolRef {
+                            module: path,
+                            symbol,
+                        });
+                    }
+                }
+            }
+        }
+        None
     }
 
     /// Every exported symbol across the project, in (module path, source)
