@@ -87,6 +87,7 @@ const METADATA_SOURCES: &[&str] = &[
     include_str!("../rules/nextjs/client-metadata-ignored.toml"),
     include_str!("../rules/nextjs/mixed-router.toml"),
     include_str!("../rules/performance/forced-dynamic.toml"),
+    include_str!("../rules/react/async-client-component.toml"),
     include_str!("../rules/security/hardcoded-secret.toml"),
     include_str!("../rules/security/no-eval.toml"),
     include_str!("../rules/typescript/duplicate-declaration.toml"),

@@ -1,0 +1,20 @@
+id = "react/async-client-component"
+title = "Async Client Component"
+category = "react"
+severity = "high"
+confidence = "certain"
+maturity = "preview"
+description = "Detects a React component declared async in a file marked \"use client\"."
+rationale = "Only Server Components may be async. React cannot render a returned promise on the client, so an async Client Component throws at runtime — a real bug, not a style issue."
+recommendation = "Remove async from the component and fetch data in a Server Component parent (or a useEffect / data-fetching hook), or drop the \"use client\" directive if the component can be a Server Component."
+false_positives = "None expected: the condition is a structural fact (a JSX-returning PascalCase/default function that is async, declared in a \"use client\" file). Confidence is 'certain'."
+references = ["https://react.dev/reference/rsc/server-components", "https://nextjs.org/docs/app/building-your-application/rendering/client-components"]
+tags = ["react", "correctness", "server-components"]
+
+[[bad_examples]]
+code = "\"use client\"\nexport default async function Widget() { return <div/> }"
+note = "Async component in a Client Component file — errors at runtime."
+
+[[good_examples]]
+code = "export default async function Page() { return <div/> } // Server Component, no 'use client'"
+note = "Async is valid in a Server Component."

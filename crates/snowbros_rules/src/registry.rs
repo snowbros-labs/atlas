@@ -30,6 +30,7 @@ pub fn builtin_rules() -> Vec<Box<dyn Rule>> {
         Box::new(rules::nextjs::ClientMetadataIgnored),
         Box::new(rules::nextjs::MixedRouter),
         Box::new(rules::no_eval::NoEval),
+        Box::new(rules::react::AsyncClientComponent),
         Box::new(rules::typescript::DuplicateDeclaration),
         Box::new(rules::typescript::UnusedExport),
         Box::new(rules::unresolved::UnresolvedImports),
