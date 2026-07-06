@@ -1,0 +1,21 @@
+[package]
+name = "snowbros_semantic"
+description = "Atlas semantic layer: resolves the language-agnostic Atlas IR into a project symbol model and populates the semantic graph. The wedge that turns per-file syntax into per-project meaning."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+snowbros_core = { workspace = true }
+snowbros_ir = { workspace = true }
+snowbros_graph = { workspace = true }
+camino = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

@@ -34,6 +34,10 @@ pub enum NodeKind {
     },
     /// A symbol: function, class, component, hook, variable, type.
     Symbol {
+        /// Project-relative path of the module that declares the symbol.
+        /// Part of the node's identity so equally-named symbols in
+        /// different files are distinct nodes rather than merged.
+        module: Utf8PathBuf,
         /// Symbol name as written in source.
         name: String,
         /// Free-form symbol kind, e.g. `function`, `class`, `component`.
@@ -63,10 +67,17 @@ impl Node {
         }
     }
 
-    /// Convenience constructor for a symbol node.
-    pub fn symbol(name: impl Into<String>, symbol_kind: impl Into<String>) -> Self {
+    /// Convenience constructor for a symbol node. `module` is the path of
+    /// the declaring file — it qualifies the symbol's identity so equal
+    /// names across files do not collide.
+    pub fn symbol(
+        module: impl Into<Utf8PathBuf>,
+        name: impl Into<String>,
+        symbol_kind: impl Into<String>,
+    ) -> Self {
         Self {
             kind: NodeKind::Symbol {
+                module: module.into(),
                 name: name.into(),
                 symbol_kind: symbol_kind.into(),
             },
@@ -88,7 +99,11 @@ impl Node {
         match &self.kind {
             NodeKind::File { path } => path.to_string(),
             NodeKind::Module { name } => name.clone(),
-            NodeKind::Symbol { name, symbol_kind } => format!("{symbol_kind} {name}"),
+            NodeKind::Symbol {
+                module,
+                name,
+                symbol_kind,
+            } => format!("{module}#{symbol_kind}#{name}"),
             NodeKind::Package { name, version } => match version {
                 Some(v) => format!("{name}@{v}"),
                 None => name.clone(),
