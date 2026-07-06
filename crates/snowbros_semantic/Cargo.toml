@@ -16,6 +16,7 @@ camino = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
+snowbros_parser = { workspace = true }
 
 [lints]
 workspace = true

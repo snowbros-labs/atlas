@@ -25,5 +25,7 @@
 //! call-graph milestone (M2).
 
 pub mod model;
+pub mod react;
 
 pub use model::{Duplicate, SemanticModel, SymbolRef};
+pub use react::{role_of, ReactRole};
