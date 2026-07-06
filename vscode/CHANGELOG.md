@@ -4,6 +4,15 @@ All notable changes to the Snowbros Atlas VS Code extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.1]
+
+### Changed
+
+- Version realigned with the Atlas CLI/engine release `v0.2.1` (M1: React
+  component/hook model and rule set). No extension behavior changes — the
+  client remains fully compatible with the `sb lsp` server, the `analyze`
+  JSON scorecard schema, and the `explain` command.
+
 ## [0.1.2]
 
 ### Fixed
