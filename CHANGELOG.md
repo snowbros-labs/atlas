@@ -4,6 +4,27 @@ All notable changes to Snowbros Atlas are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com) and the
 project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.2.2] - 2026-07-07
+
+### Bug Fixes
+
+- **`snowbros fix` now guards generic span replacements against file
+  drift.** Planned `ReplaceBytes` edits capture the span's current bytes
+  at plan time and application refuses the edit when the file changed
+  since analysis — previously only bounds were checked, so a same-length
+  drift could be silently mis-patched.
+- **Accurate skip reporting on write failure.** When a file write failed,
+  fixes that had already been skipped for other reasons were reported a
+  second time as "write failed"; only the fixes actually rolled back are
+  now reported.
+- **VS Code extension (0.2.2):** CLI commands are spawned through the
+  shell so Windows `.cmd` shims work (fixes `spawn EINVAL`).
+
+### Miscellaneous
+
+- Anchored the git-cliff `tag_pattern` so VS Code extension tags
+  (`vscode-v*`) no longer leak into CLI release notes.
+
 ## [0.2.1] - 2026-07-06
 
 ### Features
