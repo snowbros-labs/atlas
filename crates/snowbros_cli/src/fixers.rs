@@ -18,6 +18,7 @@
 //! rule-specific fixes) from the rule, then map the rule id to an
 //! [`Edit`] in [`plan`].
 
+use std::collections::HashMap;
 use std::fs;
 
 use camino::{Utf8Path, Utf8PathBuf};
@@ -79,8 +80,13 @@ pub struct Plan {
 }
 
 /// Plans fixes for a set of diagnostics.
-pub fn plan(diagnostics: &[Diagnostic]) -> Plan {
+///
+/// `root` is used to read the current span bytes for generic
+/// replacements, so application can verify the file has not drifted
+/// since analysis.
+pub fn plan(root: &Utf8Path, diagnostics: &[Diagnostic]) -> Plan {
     let mut plan = Plan::default();
+    let mut contents: HashMap<&Utf8PathBuf, Option<String>> = HashMap::new();
     for d in diagnostics {
         let Some(fix) = &d.suggested_fix else {
             plan.unfixable += 1;
@@ -96,10 +102,24 @@ pub fn plan(diagnostics: &[Diagnostic]) -> Plan {
             }
             // Generic path: a span substitution with a real byte range.
             (_, _, Some(replacement)) if d.location.span.end_byte > d.location.span.start_byte => {
+                let start = d.location.span.start_byte as usize;
+                let end = d.location.span.end_byte as usize;
+                // Capture the current span bytes so application can
+                // verify the file has not drifted since analysis.
+                let expect = contents
+                    .entry(&d.location.file)
+                    .or_insert_with(|| fs::read_to_string(root.join(&d.location.file)).ok())
+                    .as_deref()
+                    .and_then(|text| {
+                        (end <= text.len()
+                            && text.is_char_boundary(start)
+                            && text.is_char_boundary(end))
+                        .then(|| text[start..end].to_string())
+                    });
                 Some(Edit::ReplaceBytes {
-                    start: d.location.span.start_byte as usize,
-                    end: d.location.span.end_byte as usize,
-                    expect: None,
+                    start,
+                    end,
+                    expect,
                     replacement: replacement.clone(),
                 })
             }
@@ -171,23 +191,26 @@ pub fn apply(root: &Utf8Path, fixes: &[PlannedFix], dry_run: bool) -> ApplyOutco
         };
 
         let mut text = original.clone();
-        let mut applied_here = 0;
+        let mut applied_here: Vec<&PlannedFix> = Vec::new();
         for fix in batch {
             match apply_edit(&text, &fix.edit) {
                 Ok(new_text) => {
                     text = new_text;
-                    applied_here += 1;
+                    applied_here.push(fix);
                     outcome.applied += 1;
                 }
                 Err(reason) => outcome.skipped.push((fix.clone(), reason)),
             }
         }
 
-        if applied_here > 0 && text != original {
+        if !applied_here.is_empty() && text != original {
             if !dry_run && fs::write(&abs, &text).is_err() {
-                // Roll the counters back: nothing was persisted.
-                outcome.applied -= applied_here;
-                for fix in batch {
+                // Roll the counters back: nothing was persisted. Only
+                // the fixes that were applied in memory become skips;
+                // ones that already failed their guard keep their
+                // original skip reason.
+                outcome.applied -= applied_here.len();
+                for fix in applied_here {
                     outcome
                         .skipped
                         .push((fix.clone(), "write failed".to_string()));
@@ -393,6 +416,50 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.contains("changed since analysis"));
+    }
+
+    #[test]
+    fn plan_captures_span_bytes_as_guard() {
+        use snowbros_core::{Confidence, Severity, SourceLocation, SuggestedFix};
+        use snowbros_core::{Position, Span};
+
+        let dir = tempfile::tempdir().unwrap();
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+        fs::write(root.join("a.ts"), "const x = eval(a);").unwrap();
+
+        let diag = Diagnostic::new(
+            "security/no-eval",
+            "t",
+            "m",
+            "security",
+            Severity::Critical,
+            Confidence::Certain,
+            SourceLocation::new(
+                "a.ts",
+                Span::new(Position::new(1, 11), Position::new(1, 18), 10, 17),
+            ),
+        )
+        .with_fix(SuggestedFix {
+            description: "d".into(),
+            replacement: Some("JSON.parse(a)".into()),
+            target: None,
+        });
+
+        let plan = plan(root, &[diag]);
+        assert_eq!(plan.fixes.len(), 1);
+        match &plan.fixes[0].edit {
+            Edit::ReplaceBytes { expect, .. } => {
+                assert_eq!(expect.as_deref(), Some("eval(a)"));
+            }
+            other => panic!("expected ReplaceBytes, got {other:?}"),
+        }
+
+        // Drift the file: application must refuse the edit.
+        fs::write(root.join("a.ts"), "const x = safe(a);").unwrap();
+        let outcome = apply(root, &plan.fixes, false);
+        assert_eq!(outcome.applied, 0);
+        assert_eq!(outcome.skipped.len(), 1);
+        assert!(outcome.skipped[0].1.contains("changed since analysis"));
     }
 
     #[test]

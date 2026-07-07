@@ -40,7 +40,7 @@ pub fn run(
         diagnostics.retain(|d| files.iter().any(|f| f == &d.location.file));
     }
 
-    let plan = fixers::plan(&diagnostics);
+    let plan = fixers::plan(&root, &diagnostics);
     if plan.fixes.is_empty() {
         println!(
             "{} nothing to fix ({} finding(s), {} not auto-fixable)",
