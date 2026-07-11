@@ -23,7 +23,10 @@ use camino::Utf8PathBuf;
 use tree_sitter::Node;
 
 use snowbros_core::{Position, Span};
-use snowbros_ir::{Call, ClassData, FunctionData, Import, Module, Symbol, SymbolKind};
+use snowbros_ir::{
+    Call, ClassData, EnumData, FunctionData, Import, InterfaceData, Module, Symbol, SymbolKind,
+    TypeAliasData,
+};
 
 use crate::imports::extract_imports;
 use crate::treesitter::ParsedFile;
@@ -189,6 +192,40 @@ fn lower_declaration(node: Node<'_>, parsed: &ParsedFile, exported: bool, out: &
                 out.push(Symbol {
                     name: parsed.text_of(name).to_string(),
                     kind: SymbolKind::Class(class_data(node, parsed)),
+                    span: span_of(name),
+                    exported,
+                });
+            }
+        }
+        "interface_declaration" => {
+            if let Some(name) = node.child_by_field_name("name") {
+                out.push(Symbol {
+                    name: parsed.text_of(name).to_string(),
+                    kind: SymbolKind::Interface(interface_data(node, parsed)),
+                    span: span_of(name),
+                    exported,
+                });
+            }
+        }
+        "type_alias_declaration" => {
+            if let Some(name) = node.child_by_field_name("name") {
+                let mut type_refs = Vec::new();
+                if let Some(value) = node.child_by_field_name("value") {
+                    collect_type_refs(value, parsed, &mut type_refs);
+                }
+                out.push(Symbol {
+                    name: parsed.text_of(name).to_string(),
+                    kind: SymbolKind::TypeAlias(TypeAliasData { type_refs }),
+                    span: span_of(name),
+                    exported,
+                });
+            }
+        }
+        "enum_declaration" => {
+            if let Some(name) = node.child_by_field_name("name") {
+                out.push(Symbol {
+                    name: parsed.text_of(name).to_string(),
+                    kind: SymbolKind::Enum(enum_data(node, parsed)),
                     span: span_of(name),
                     exported,
                 });
@@ -390,6 +427,71 @@ fn class_data(node: Node<'_>, parsed: &ParsedFile) -> ClassData {
         }
     }
     ClassData { members }
+}
+
+/// Extracts [`InterfaceData`] from an `interface_declaration`: member names
+/// from the interface body, and referenced type names from the `extends`
+/// clause and member type annotations (the interface's own name is excluded
+/// because it is a sibling `name` field, not inside the heritage or body).
+fn interface_data(node: Node<'_>, parsed: &ParsedFile) -> InterfaceData {
+    let mut members = Vec::new();
+    let mut type_refs = Vec::new();
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        match child.kind() {
+            // Heritage: `extends A, B`.
+            "extends_type_clause" => collect_type_refs(child, parsed, &mut type_refs),
+            "interface_body" | "object_type" => {
+                let mut bc = child.walk();
+                for member in child.children(&mut bc) {
+                    match member.kind() {
+                        "property_signature" | "method_signature" => {
+                            if let Some(name) = member.child_by_field_name("name") {
+                                members.push(parsed.text_of(name).to_string());
+                            }
+                            collect_type_refs(member, parsed, &mut type_refs);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    InterfaceData { members, type_refs }
+}
+
+/// Enum member names, in source order.
+fn enum_data(node: Node<'_>, parsed: &ParsedFile) -> EnumData {
+    let mut members = Vec::new();
+    if let Some(body) = node.child_by_field_name("body") {
+        let mut cursor = body.walk();
+        for child in body.children(&mut cursor) {
+            match child.kind() {
+                "property_identifier" => members.push(parsed.text_of(child).to_string()),
+                "enum_assignment" => {
+                    if let Some(name) = child.child_by_field_name("name") {
+                        members.push(parsed.text_of(name).to_string());
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    EnumData { members }
+}
+
+/// Depth-first collection of referenced type names (`type_identifier`
+/// nodes) beneath `node`, in source order. Duplicates are kept — the
+/// semantic layer deduplicates when it builds type-reference edges.
+fn collect_type_refs(node: Node<'_>, parsed: &ParsedFile, out: &mut Vec<String>) {
+    if node.kind() == "type_identifier" {
+        out.push(parsed.text_of(node).to_string());
+    }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_type_refs(child, parsed, out);
+    }
 }
 
 /// Depth-first collection of call sites. `in_symbol` is intentionally left
@@ -698,6 +800,75 @@ export default class D { m() {} }
         assert!(!returns_jsx(
             "export function makeRender() { return function r() { return <i/>; }; }"
         ));
+    }
+
+    #[test]
+    fn lowers_interface_with_members_and_type_refs() {
+        let m = lower_src(
+            "export interface User extends Base { id: number; profile: Profile; greet(): string; }",
+            Language::TypeScript,
+            "a.ts",
+        );
+        assert_eq!(names(&m), vec!["User"]);
+        assert!(m.symbols[0].exported);
+        match &m.symbols[0].kind {
+            SymbolKind::Interface(d) => {
+                assert_eq!(d.members, vec!["id", "profile", "greet"]);
+                // `Base` (extends) and `Profile` (member type); own name excluded.
+                assert!(d.type_refs.contains(&"Base".to_string()));
+                assert!(d.type_refs.contains(&"Profile".to_string()));
+                assert!(!d.type_refs.contains(&"User".to_string()));
+            }
+            other => panic!("expected interface, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_type_alias_with_refs() {
+        let m = lower_src(
+            "type Wrapper = Box<User>; type ID = string;",
+            Language::TypeScript,
+            "a.ts",
+        );
+        assert_eq!(names(&m), vec!["Wrapper", "ID"]);
+        match &m.symbols[0].kind {
+            SymbolKind::TypeAlias(d) => {
+                assert!(d.type_refs.contains(&"Box".to_string()));
+                assert!(d.type_refs.contains(&"User".to_string()));
+            }
+            other => panic!("expected type alias, got {other:?}"),
+        }
+        // A predefined-type alias references no named types.
+        match &m.symbols[1].kind {
+            SymbolKind::TypeAlias(d) => assert!(d.type_refs.is_empty()),
+            other => panic!("expected type alias, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_enum_members() {
+        let m = lower_src(
+            "export enum Color { Red, Green = 2, Blue }",
+            Language::TypeScript,
+            "a.ts",
+        );
+        match &m.symbols[0].kind {
+            SymbolKind::Enum(d) => assert_eq!(d.members, vec!["Red", "Green", "Blue"]),
+            other => panic!("expected enum, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn type_symbols_report_is_type() {
+        let m = lower_src(
+            "interface I {} type T = string; enum E { A } function f() {}",
+            Language::TypeScript,
+            "a.ts",
+        );
+        assert!(m.symbols[0].kind.is_type());
+        assert!(m.symbols[1].kind.is_type());
+        assert!(m.symbols[2].kind.is_type());
+        assert!(!m.symbols[3].kind.is_type());
     }
 
     #[test]

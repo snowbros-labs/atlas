@@ -96,6 +96,12 @@ pub enum SymbolKind {
     Function(FunctionData),
     /// A class declaration.
     Class(ClassData),
+    /// A TypeScript `interface` declaration.
+    Interface(InterfaceData),
+    /// A TypeScript `type` alias declaration.
+    TypeAlias(TypeAliasData),
+    /// A TypeScript `enum` declaration.
+    Enum(EnumData),
     /// A `const` binding.
     Const,
     /// A `let` binding.
@@ -115,10 +121,34 @@ impl SymbolKind {
         match self {
             SymbolKind::Function(_) => "function",
             SymbolKind::Class(_) => "class",
+            SymbolKind::Interface(_) => "interface",
+            SymbolKind::TypeAlias(_) => "type",
+            SymbolKind::Enum(_) => "enum",
             SymbolKind::Const => "const",
             SymbolKind::Let => "let",
             SymbolKind::Var => "var",
             SymbolKind::Unknown => "unknown",
+        }
+    }
+
+    /// Whether this symbol declares a type (interface / type alias / enum).
+    /// Type declarations live in TypeScript's type namespace and drive the
+    /// type-level rules (duplicate interface, circular type reference).
+    pub fn is_type(&self) -> bool {
+        matches!(
+            self,
+            SymbolKind::Interface(_) | SymbolKind::TypeAlias(_) | SymbolKind::Enum(_)
+        )
+    }
+
+    /// The names of other types this declaration references (its `extends`
+    /// targets and the type names named in its members / aliased type), for
+    /// building type-reference edges. Empty for non-type kinds.
+    pub fn type_refs(&self) -> &[String] {
+        match self {
+            SymbolKind::Interface(d) => &d.type_refs,
+            SymbolKind::TypeAlias(d) => &d.type_refs,
+            _ => &[],
         }
     }
 }
@@ -142,6 +172,33 @@ pub struct FunctionData {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClassData {
     /// Method and field names declared on the class, in source order.
+    pub members: Vec<String>,
+}
+
+/// Extra structure carried by an interface-kind [`Symbol`].
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InterfaceData {
+    /// Property and method names declared on the interface, in source
+    /// order — the structural fingerprint used to spot duplicates.
+    pub members: Vec<String>,
+    /// Names of other types this interface references: its `extends`
+    /// targets and the type identifiers named in member annotations, in
+    /// source order (deduplication is the semantic layer's job).
+    pub type_refs: Vec<String>,
+}
+
+/// Extra structure carried by a type-alias-kind [`Symbol`].
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TypeAliasData {
+    /// Names of types referenced in the aliased type expression, in source
+    /// order.
+    pub type_refs: Vec<String>,
+}
+
+/// Extra structure carried by an enum-kind [`Symbol`].
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EnumData {
+    /// Enum member names, in source order.
     pub members: Vec<String>,
 }
 
