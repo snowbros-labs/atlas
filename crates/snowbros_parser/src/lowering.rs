@@ -435,12 +435,13 @@ fn class_data(node: Node<'_>, parsed: &ParsedFile) -> ClassData {
 /// because it is a sibling `name` field, not inside the heritage or body).
 fn interface_data(node: Node<'_>, parsed: &ParsedFile) -> InterfaceData {
     let mut members = Vec::new();
+    let mut extends = Vec::new();
     let mut type_refs = Vec::new();
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         match child.kind() {
-            // Heritage: `extends A, B`.
-            "extends_type_clause" => collect_type_refs(child, parsed, &mut type_refs),
+            // Heritage: `extends A, B` — kept separate from member refs.
+            "extends_type_clause" => collect_type_refs(child, parsed, &mut extends),
             "interface_body" | "object_type" => {
                 let mut bc = child.walk();
                 for member in child.children(&mut bc) {
@@ -458,7 +459,11 @@ fn interface_data(node: Node<'_>, parsed: &ParsedFile) -> InterfaceData {
             _ => {}
         }
     }
-    InterfaceData { members, type_refs }
+    InterfaceData {
+        members,
+        extends,
+        type_refs,
+    }
 }
 
 /// Enum member names, in source order.
@@ -814,9 +819,10 @@ export default class D { m() {} }
         match &m.symbols[0].kind {
             SymbolKind::Interface(d) => {
                 assert_eq!(d.members, vec!["id", "profile", "greet"]);
-                // `Base` (extends) and `Profile` (member type); own name excluded.
-                assert!(d.type_refs.contains(&"Base".to_string()));
+                // `Base` is heritage; `Profile` is a member ref; own name excluded.
+                assert_eq!(d.extends, vec!["Base"]);
                 assert!(d.type_refs.contains(&"Profile".to_string()));
+                assert!(!d.type_refs.contains(&"Base".to_string()));
                 assert!(!d.type_refs.contains(&"User".to_string()));
             }
             other => panic!("expected interface, got {other:?}"),

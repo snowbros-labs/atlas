@@ -141,9 +141,11 @@ impl SymbolKind {
         )
     }
 
-    /// The names of other types this declaration references (its `extends`
-    /// targets and the type names named in its members / aliased type), for
-    /// building type-reference edges. Empty for non-type kinds.
+    /// The names of other types this declaration references through its
+    /// members (interface member annotations) or aliased type expression,
+    /// for building type-reference edges. Heritage (`extends`) is tracked
+    /// separately on [`InterfaceData::extends`] because it has different
+    /// cycle semantics. Empty for non-type kinds.
     pub fn type_refs(&self) -> &[String] {
         match self {
             SymbolKind::Interface(d) => &d.type_refs,
@@ -181,8 +183,15 @@ pub struct InterfaceData {
     /// Property and method names declared on the interface, in source
     /// order — the structural fingerprint used to spot duplicates.
     pub members: Vec<String>,
-    /// Names of other types this interface references: its `extends`
-    /// targets and the type identifiers named in member annotations, in
+    /// Names named in the `extends` heritage clause, in source order.
+    ///
+    /// Kept separate from [`InterfaceData::type_refs`] because heritage
+    /// references have different semantics: a cycle through `extends` is a
+    /// TypeScript error (zero false positives to flag), whereas a cycle
+    /// through member annotations (`interface A { b: B }`) is legal mutual
+    /// recursion and must **not** be flagged.
+    pub extends: Vec<String>,
+    /// Names of types referenced in member annotations (not heritage), in
     /// source order (deduplication is the semantic layer's job).
     pub type_refs: Vec<String>,
 }
