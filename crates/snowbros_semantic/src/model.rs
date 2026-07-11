@@ -161,17 +161,38 @@ impl SemanticModel {
         out
     }
 
+    /// The first exported symbol named `name` in `module`, if any — the
+    /// resolution target for a cross-file reference to `name`.
+    pub fn exported_symbol(&self, module: impl AsRef<Utf8Path>, name: &str) -> Option<SymbolId> {
+        let (path, m) = self.modules.get_key_value(module.as_ref())?;
+        m.symbols
+            .iter()
+            .find(|s| s.exported && s.name == name)
+            .map(|s| s.id(path))
+    }
+
     /// Every resolved intra-module call edge, as `(caller, callee)` symbol
-    /// ids, in (module, source) order.
+    /// ids — see [`SemanticModel::resolved_call_edges`] with no imports.
+    pub fn call_edges(&self) -> Vec<(SymbolId, SymbolId)> {
+        self.resolved_call_edges(&ImportedNames::new())
+    }
+
+    /// Every resolved call edge, as `(caller, callee)` symbol ids, in
+    /// (module, source) order.
     ///
     /// A call contributes an edge when both sides are known: its enclosing
     /// top-level function (`Call::in_symbol`, set during lowering) and a
-    /// top-level symbol in the *same* module whose name matches the textual
-    /// callee. Cross-file calls and member calls (`foo.bar`) are not
-    /// resolved here — cross-file call resolution needs module resolution
-    /// and lands in a later unit. Accuracy over quantity: an unresolved
-    /// callee yields no edge rather than a guessed one.
-    pub fn call_edges(&self) -> Vec<(SymbolId, SymbolId)> {
+    /// resolvable callee. Resolution order for a plain-identifier callee:
+    /// 1. a top-level symbol in the *same* module (intra-file), else
+    /// 2. an unaliased named import of that name (`imports`), resolving to
+    ///    the matching **exported** symbol in the target module (cross-file).
+    ///
+    /// Member calls (`foo.bar`), default/namespace imports, and aliased
+    /// imports are deliberately unresolved: `imports` keys are the names
+    /// actually bound as callables, and `default`/`*` are excluded by the
+    /// caller. Accuracy over quantity — an unresolved callee yields no edge
+    /// rather than a guessed one.
+    pub fn resolved_call_edges(&self, imports: &ImportedNames) -> Vec<(SymbolId, SymbolId)> {
         let mut out = Vec::new();
         for (path, module) in &self.modules {
             // name → first top-level symbol declaring it (source order).
@@ -179,16 +200,30 @@ impl SemanticModel {
             for symbol in &module.symbols {
                 by_name.entry(&symbol.name).or_insert(symbol);
             }
+            let module_imports = imports.get(path);
             for call in &module.calls {
                 let Some(caller) = &call.in_symbol else {
                     continue;
                 };
-                if let Some(callee) = by_name.get(call.callee.as_str()) {
-                    out.push((caller.clone(), callee.id(path)));
+                let callee = call.callee.as_str();
+                if let Some(sym) = by_name.get(callee) {
+                    // Intra-file: a local declaration shadows any import.
+                    out.push((caller.clone(), sym.id(path)));
+                } else if let Some(target) = module_imports.and_then(|m| m.get(callee)) {
+                    // Cross-file: resolve to the exported symbol in target.
+                    if let Some(callee_id) = self.exported_symbol(target, callee) {
+                        out.push((caller.clone(), callee_id));
+                    }
                 }
             }
         }
         out
+    }
+
+    /// Populates the semantic graph with symbol-level structure, intra-file
+    /// calls only. See [`SemanticModel::populate_graph_with_imports`].
+    pub fn populate_graph(&self, graph: &mut SemanticGraph) {
+        self.populate_graph_with_imports(graph, &ImportedNames::new());
     }
 
     /// Populates the semantic graph with symbol-level structure:
@@ -196,11 +231,12 @@ impl SemanticModel {
     /// - a [`Node`] per declared symbol;
     /// - a `Contains` edge file → symbol for every declaration;
     /// - an `Exports` edge file → symbol for every exported declaration;
-    /// - a `Calls` edge caller symbol → callee symbol for every resolved
-    ///   intra-module call (see [`SemanticModel::call_edges`]).
+    /// - a `Calls` edge caller → callee for every resolved call
+    ///   (intra-file, plus cross-file via `imports`; see
+    ///   [`SemanticModel::resolved_call_edges`]).
     ///
     /// Additive: existing file/package nodes and edges are untouched.
-    pub fn populate_graph(&self, graph: &mut SemanticGraph) {
+    pub fn populate_graph_with_imports(&self, graph: &mut SemanticGraph, imports: &ImportedNames) {
         for (path, module) in &self.modules {
             let file = graph.add_node(Node::file(path.clone()));
             for symbol in &module.symbols {
@@ -218,7 +254,7 @@ impl SemanticModel {
         // Call edges, added after all symbol nodes exist so both endpoints
         // resolve. Node labels are stable (`module#kind#name`), so the
         // caller/callee ids map onto the nodes inserted above.
-        for (caller, callee) in self.call_edges() {
+        for (caller, callee) in self.resolved_call_edges(imports) {
             let (Some(from), Some(to)) = (
                 graph.find(&symbol_node_label(&caller)),
                 graph.find(&symbol_node_label(&callee)),
@@ -229,6 +265,16 @@ impl SemanticModel {
         }
     }
 }
+
+/// Resolved project-internal imports, per module: for each module path, a
+/// map from the local callable name to the module it resolves to.
+///
+/// Only unaliased **named** imports belong here — a name whose local
+/// binding equals its exported name, so a call to it resolves to that
+/// export in the target. Default/namespace/aliased imports are excluded by
+/// the builder because their local name cannot be matched to a callee
+/// safely.
+pub type ImportedNames = BTreeMap<Utf8PathBuf, BTreeMap<String, Utf8PathBuf>>;
 
 /// The graph node label for a symbol id.
 ///
@@ -490,6 +536,68 @@ mod tests {
         let g = graph.find("a.ts#function#g").unwrap();
         assert!(graph.has_outgoing(f, EdgeKind::Calls));
         assert!(graph.has_incoming(g, EdgeKind::Calls));
+    }
+
+    #[test]
+    fn resolves_cross_file_call_edge() {
+        use snowbros_ir::Call;
+        // consumer.ts imports `helper` from util.ts and calls it.
+        let mut consumer = module("consumer.ts", vec![func("run", true, 0, (10, 90))]);
+        let run_id = consumer.symbols[0].id("consumer.ts");
+        consumer.calls.push(Call {
+            callee: "helper".to_string(),
+            arg_count: 0,
+            span: span(50, 58),
+            in_symbol: Some(run_id.clone()),
+        });
+        let util = module("util.ts", vec![func("helper", true, 0, (10, 20))]);
+        let model = SemanticModel::from_modules([consumer, util]);
+
+        // Without imports: unresolved (helper is not local to consumer.ts).
+        assert!(model.call_edges().is_empty());
+
+        // With the named-import mapping helper → util.ts: resolved.
+        let mut imports = ImportedNames::new();
+        imports
+            .entry("consumer.ts".into())
+            .or_default()
+            .insert("helper".to_string(), "util.ts".into());
+        let edges = model.resolved_call_edges(&imports);
+        assert_eq!(edges.len(), 1);
+        assert_eq!(edges[0].0, run_id);
+        assert_eq!(edges[0].1.as_str(), "util.ts#function#helper@0-1");
+    }
+
+    #[test]
+    fn local_declaration_shadows_import() {
+        use snowbros_ir::Call;
+        // consumer declares its own `helper` and also imports one — the
+        // local wins.
+        let mut consumer = module(
+            "consumer.ts",
+            vec![
+                func("run", true, 0, (10, 90)),
+                func("helper", false, 100, (110, 120)),
+            ],
+        );
+        let run_id = consumer.symbols[0].id("consumer.ts");
+        consumer.calls.push(Call {
+            callee: "helper".to_string(),
+            arg_count: 0,
+            span: span(50, 58),
+            in_symbol: Some(run_id),
+        });
+        let util = module("util.ts", vec![func("helper", true, 0, (10, 20))]);
+        let model = SemanticModel::from_modules([consumer, util]);
+        let mut imports = ImportedNames::new();
+        imports
+            .entry("consumer.ts".into())
+            .or_default()
+            .insert("helper".to_string(), "util.ts".into());
+        let edges = model.resolved_call_edges(&imports);
+        assert_eq!(edges.len(), 1);
+        // Resolves to the LOCAL helper, not util's.
+        assert_eq!(edges[0].1.as_str(), "consumer.ts#function#helper@100-101");
     }
 
     #[test]

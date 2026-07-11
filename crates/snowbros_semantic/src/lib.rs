@@ -27,5 +27,5 @@
 pub mod model;
 pub mod react;
 
-pub use model::{Duplicate, SemanticModel, SymbolRef};
+pub use model::{Duplicate, ImportedNames, SemanticModel, SymbolRef};
 pub use react::{is_hook_name, role_of, ReactRole};

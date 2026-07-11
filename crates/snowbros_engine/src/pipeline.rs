@@ -25,7 +25,7 @@ use snowbros_parser::{extract_facts, lower, parse, FileFacts};
 use snowbros_resolver::{resolve, FileSet, Resolution, TsPaths};
 use snowbros_rules::{EnvDeclaration, ImportBinding, UnresolvedImport};
 use snowbros_scanner::{scan, ScanResult};
-use snowbros_semantic::SemanticModel;
+use snowbros_semantic::{ImportedNames, SemanticModel};
 
 /// Everything the pipeline produces.
 pub struct Pipeline {
@@ -259,8 +259,22 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
     // from `graph` above: populating symbol nodes there would change the
     // `sb graph` DOT export and any node-count-sensitive analyzer.
     let semantic = SemanticModel::from_modules(ir_modules);
+    // Cross-file call resolution input: for each importing file, the
+    // unaliased named imports (`default`/`*` excluded) and the project file
+    // each resolves to. Built from the already-resolved import bindings so
+    // no extra resolution work is done.
+    let mut imported_names: ImportedNames = BTreeMap::new();
+    for binding in &import_bindings {
+        let entry = imported_names.entry(binding.from.clone()).or_default();
+        for name in &binding.names {
+            if name == "default" || name == "*" {
+                continue;
+            }
+            entry.insert(name.clone(), binding.to.clone());
+        }
+    }
     let mut symbol_graph = SemanticGraph::new();
-    semantic.populate_graph(&mut symbol_graph);
+    semantic.populate_graph_with_imports(&mut symbol_graph, &imported_names);
 
     // Next.js project model, built from a deterministic snapshot: the
     // scanned file list, files carrying `"use client"`, and each file's
