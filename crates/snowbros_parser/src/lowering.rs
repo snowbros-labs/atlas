@@ -65,12 +65,40 @@ pub fn lower(parsed: &ParsedFile, path: impl Into<Utf8PathBuf>) -> Module {
         }
     }
 
-    // Calls: flat, whole-tree. The enclosing symbol is left unresolved here
-    // (`in_symbol: None`) — the semantic layer assigns it by span
-    // containment when it builds the call graph.
+    // Calls: flat, whole-tree, then resolve each to its enclosing top-level
+    // symbol by span containment. Enclosure is intra-module (a call's caller
+    // is declared in the same file), so it is resolved here where the IR is
+    // cached — warm re-analysis re-derives identical `in_symbol` ids.
     collect_calls(root, parsed, &mut module.calls);
+    resolve_call_enclosure(&mut module);
 
     module
+}
+
+/// Assigns each call its enclosing top-level function symbol (the caller
+/// side of a call-graph edge), by body-span containment.
+///
+/// Only top-level `Function` symbols with a body span can enclose a call.
+/// A call not inside any such body (e.g. a module-level initializer) keeps
+/// `in_symbol: None`. Nested closures resolve to their nearest enclosing
+/// *top-level* declaration — sufficient for reachability, never a false
+/// enclosure. First containing symbol in source order wins.
+fn resolve_call_enclosure(module: &mut Module) {
+    let path = module.path.clone();
+    for call in &mut module.calls {
+        for symbol in &module.symbols {
+            let SymbolKind::Function(data) = &symbol.kind else {
+                continue;
+            };
+            let Some(body) = data.body_span else {
+                continue;
+            };
+            if body.start_byte <= call.span.start_byte && call.span.end_byte <= body.end_byte {
+                call.in_symbol = Some(symbol.id(&path));
+                break;
+            }
+        }
+    }
 }
 
 /// Handles an `export …` statement: `export <decl>`, `export default …`,
@@ -575,7 +603,45 @@ export function C() {
             .collect();
         assert!(callees.contains(&("useState", 1)));
         assert!(callees.contains(&("doThing", 3)));
-        assert!(m.calls.iter().all(|c| c.in_symbol.is_none()));
+        // Both calls sit inside `C`'s body, so enclosure resolves to it.
+        let c_id = m.symbols[0].id(&m.path);
+        assert!(m.calls.iter().all(|c| c.in_symbol.as_ref() == Some(&c_id)));
+    }
+
+    #[test]
+    fn call_enclosure_resolves_to_top_level_function() {
+        let m = lower_src(
+            r#"
+setup();
+export function outer() {
+  helper();
+  const inner = () => nested();
+}
+function other() { lone(); }
+"#,
+            Language::TypeScript,
+            "a.ts",
+        );
+        let find = |callee: &str| m.calls.iter().find(|c| c.callee == callee).unwrap().clone();
+        let outer_id = m
+            .symbols
+            .iter()
+            .find(|s| s.name == "outer")
+            .unwrap()
+            .id(&m.path);
+        let other_id = m
+            .symbols
+            .iter()
+            .find(|s| s.name == "other")
+            .unwrap()
+            .id(&m.path);
+
+        // Module-level call: no enclosing function.
+        assert_eq!(find("setup").in_symbol, None);
+        // Direct + nested-closure calls resolve to the top-level function.
+        assert_eq!(find("helper").in_symbol, Some(outer_id.clone()));
+        assert_eq!(find("nested").in_symbol, Some(outer_id));
+        assert_eq!(find("lone").in_symbol, Some(other_id));
     }
 
     #[test]

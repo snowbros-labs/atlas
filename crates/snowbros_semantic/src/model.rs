@@ -161,15 +161,45 @@ impl SemanticModel {
         out
     }
 
+    /// Every resolved intra-module call edge, as `(caller, callee)` symbol
+    /// ids, in (module, source) order.
+    ///
+    /// A call contributes an edge when both sides are known: its enclosing
+    /// top-level function (`Call::in_symbol`, set during lowering) and a
+    /// top-level symbol in the *same* module whose name matches the textual
+    /// callee. Cross-file calls and member calls (`foo.bar`) are not
+    /// resolved here — cross-file call resolution needs module resolution
+    /// and lands in a later unit. Accuracy over quantity: an unresolved
+    /// callee yields no edge rather than a guessed one.
+    pub fn call_edges(&self) -> Vec<(SymbolId, SymbolId)> {
+        let mut out = Vec::new();
+        for (path, module) in &self.modules {
+            // name → first top-level symbol declaring it (source order).
+            let mut by_name: BTreeMap<&str, &Symbol> = BTreeMap::new();
+            for symbol in &module.symbols {
+                by_name.entry(&symbol.name).or_insert(symbol);
+            }
+            for call in &module.calls {
+                let Some(caller) = &call.in_symbol else {
+                    continue;
+                };
+                if let Some(callee) = by_name.get(call.callee.as_str()) {
+                    out.push((caller.clone(), callee.id(path)));
+                }
+            }
+        }
+        out
+    }
+
     /// Populates the semantic graph with symbol-level structure:
     /// - a [`Node`] per file (deduplicated by the graph);
     /// - a [`Node`] per declared symbol;
     /// - a `Contains` edge file → symbol for every declaration;
-    /// - an `Exports` edge file → symbol for every exported declaration.
+    /// - an `Exports` edge file → symbol for every exported declaration;
+    /// - a `Calls` edge caller symbol → callee symbol for every resolved
+    ///   intra-module call (see [`SemanticModel::call_edges`]).
     ///
     /// Additive: existing file/package nodes and edges are untouched.
-    /// `Calls` edges are intentionally not built here — call resolution is
-    /// the call-graph milestone's job (M2).
     pub fn populate_graph(&self, graph: &mut SemanticGraph) {
         for (path, module) in &self.modules {
             let file = graph.add_node(Node::file(path.clone()));
@@ -185,6 +215,31 @@ impl SemanticModel {
                 }
             }
         }
+        // Call edges, added after all symbol nodes exist so both endpoints
+        // resolve. Node labels are stable (`module#kind#name`), so the
+        // caller/callee ids map onto the nodes inserted above.
+        for (caller, callee) in self.call_edges() {
+            let (Some(from), Some(to)) = (
+                graph.find(&symbol_node_label(&caller)),
+                graph.find(&symbol_node_label(&callee)),
+            ) else {
+                continue;
+            };
+            graph.add_edge(from, to, EdgeKind::Calls);
+        }
+    }
+}
+
+/// The graph node label for a symbol id.
+///
+/// A [`SymbolId`] is `path#kind#name@start-end`; a symbol *node* label is
+/// `path#kind#name` (spans are not part of node identity). Strip the span
+/// suffix to join the two.
+fn symbol_node_label(id: &SymbolId) -> String {
+    let s = id.as_str();
+    match s.rfind('@') {
+        Some(at) => s[..at].to_string(),
+        None => s.to_string(),
     }
 }
 
@@ -363,6 +418,93 @@ mod tests {
         assert_eq!(g.node_count(), 4);
         assert!(g.find("a.ts#function#f").is_some());
         assert!(g.find("b.ts#function#f").is_some());
+    }
+
+    fn func(name: &str, exported: bool, name_at: u32, body: (u32, u32)) -> Symbol {
+        Symbol {
+            name: name.to_string(),
+            kind: SymbolKind::Function(FunctionData {
+                body_span: Some(span(body.0, body.1)),
+                ..FunctionData::default()
+            }),
+            span: span(name_at, name_at + 1),
+            exported,
+        }
+    }
+
+    #[test]
+    fn resolves_intra_module_call_edges() {
+        use snowbros_ir::Call;
+        let mut m = module(
+            "a.ts",
+            vec![
+                func("caller", true, 0, (10, 90)),
+                func("callee", false, 100, (110, 120)),
+            ],
+        );
+        let caller_id = m.symbols[0].id("a.ts");
+        // Call to `callee` from inside `caller`'s body.
+        m.calls.push(Call {
+            callee: "callee".to_string(),
+            arg_count: 0,
+            span: span(50, 58),
+            in_symbol: Some(caller_id.clone()),
+        });
+        // Call to an unknown / external name — no edge.
+        m.calls.push(Call {
+            callee: "external".to_string(),
+            arg_count: 0,
+            span: span(60, 68),
+            in_symbol: Some(caller_id.clone()),
+        });
+
+        let model = SemanticModel::from_modules([m]);
+        let edges = model.call_edges();
+        assert_eq!(edges.len(), 1);
+        assert_eq!(edges[0].0, caller_id);
+        assert_eq!(edges[0].1.as_str(), "a.ts#function#callee@100-101");
+    }
+
+    #[test]
+    fn populate_graph_adds_calls_edge() {
+        use snowbros_ir::Call;
+        let mut m = module(
+            "a.ts",
+            vec![
+                func("f", true, 0, (10, 90)),
+                func("g", false, 100, (110, 120)),
+            ],
+        );
+        let f_id = m.symbols[0].id("a.ts");
+        m.calls.push(Call {
+            callee: "g".to_string(),
+            arg_count: 0,
+            span: span(50, 51),
+            in_symbol: Some(f_id),
+        });
+        let model = SemanticModel::from_modules([m]);
+        let mut graph = SemanticGraph::new();
+        model.populate_graph(&mut graph);
+
+        let f = graph.find("a.ts#function#f").unwrap();
+        let g = graph.find("a.ts#function#g").unwrap();
+        assert!(graph.has_outgoing(f, EdgeKind::Calls));
+        assert!(graph.has_incoming(g, EdgeKind::Calls));
+    }
+
+    #[test]
+    fn no_call_edge_without_enclosure() {
+        use snowbros_ir::Call;
+        let mut m = module("a.ts", vec![func("g", false, 100, (110, 120))]);
+        // Module-level call with no enclosing symbol → not an edge.
+        m.calls.push(Call {
+            callee: "g".to_string(),
+            arg_count: 0,
+            span: span(0, 1),
+            in_symbol: None,
+        });
+        let model = SemanticModel::from_modules([m]);
+        assert!(model.call_edges().is_empty());
     }
 
     #[test]
