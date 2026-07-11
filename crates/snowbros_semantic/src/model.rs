@@ -346,7 +346,9 @@ impl SemanticModel {
     /// - an `Exports` edge file → symbol for every exported declaration;
     /// - a `Calls` edge caller → callee for every resolved call
     ///   (intra-file, plus cross-file via `imports`; see
-    ///   [`SemanticModel::resolved_call_edges`]).
+    ///   [`SemanticModel::resolved_call_edges`]);
+    /// - a `TypeRef` edge interface → base interface for every `extends`
+    ///   heritage link resolved within the same module.
     ///
     /// Additive: existing file/package nodes and edges are untouched.
     pub fn populate_graph_with_imports(&self, graph: &mut SemanticGraph, imports: &ImportedNames) {
@@ -375,6 +377,33 @@ impl SemanticModel {
                 continue;
             };
             graph.add_edge(from, to, EdgeKind::Calls);
+        }
+        // Inheritance edges: interface `extends` base interfaces declared in
+        // the same module (matches the intra-module scope of the type rules).
+        for (path, module) in &self.modules {
+            let interfaces: std::collections::BTreeSet<&str> = module
+                .symbols
+                .iter()
+                .filter(|s| matches!(s.kind, SymbolKind::Interface(_)))
+                .map(|s| s.name.as_str())
+                .collect();
+            for symbol in &module.symbols {
+                let SymbolKind::Interface(data) = &symbol.kind else {
+                    continue;
+                };
+                let from_label = format!("{path}#interface#{}", symbol.name);
+                for base in &data.extends {
+                    if !interfaces.contains(base.as_str()) {
+                        continue;
+                    }
+                    let to_label = format!("{path}#interface#{base}");
+                    let (Some(from), Some(to)) = (graph.find(&from_label), graph.find(&to_label))
+                    else {
+                        continue;
+                    };
+                    graph.add_edge(from, to, EdgeKind::TypeRef);
+                }
+            }
         }
     }
 }
@@ -870,6 +899,21 @@ mod tests {
             .map(|s| s.symbol.name.as_str())
             .collect();
         assert_eq!(dead, vec!["dead"]);
+    }
+
+    #[test]
+    fn populate_graph_adds_typeref_edge() {
+        // interface Derived extends Base → a TypeRef edge Derived → Base.
+        let model = SemanticModel::from_modules([module(
+            "a.ts",
+            vec![iface("Derived", &["Base"], 0), iface("Base", &[], 10)],
+        )]);
+        let mut g = SemanticGraph::new();
+        model.populate_graph(&mut g);
+        let derived = g.find("a.ts#interface#Derived").unwrap();
+        let base = g.find("a.ts#interface#Base").unwrap();
+        assert!(g.has_outgoing(derived, EdgeKind::TypeRef));
+        assert!(g.has_incoming(base, EdgeKind::TypeRef));
     }
 
     #[test]
