@@ -83,6 +83,7 @@ const METADATA_SOURCES: &[&str] = &[
     include_str!("../rules/architecture/unused-export.toml"),
     include_str!("../rules/dependencies/unused-dependency.toml"),
     include_str!("../rules/environment/unused-env-var.toml"),
+    include_str!("../rules/imports/broken-path-alias.toml"),
     include_str!("../rules/imports/unresolved-import.toml"),
     include_str!("../rules/nextjs/client-metadata-ignored.toml"),
     include_str!("../rules/nextjs/mixed-router.toml"),
@@ -93,7 +94,9 @@ const METADATA_SOURCES: &[&str] = &[
     include_str!("../rules/react/hook-returns-jsx.toml"),
     include_str!("../rules/security/hardcoded-secret.toml"),
     include_str!("../rules/security/no-eval.toml"),
+    include_str!("../rules/typescript/circular-type-reference.toml"),
     include_str!("../rules/typescript/duplicate-declaration.toml"),
+    include_str!("../rules/typescript/unreachable-symbol.toml"),
     include_str!("../rules/typescript/unused-export.toml"),
 ];
 

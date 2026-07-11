@@ -23,7 +23,10 @@ use camino::Utf8PathBuf;
 use tree_sitter::Node;
 
 use snowbros_core::{Position, Span};
-use snowbros_ir::{Call, ClassData, FunctionData, Import, Module, Symbol, SymbolKind};
+use snowbros_ir::{
+    Call, ClassData, EnumData, FunctionData, Import, InterfaceData, Module, Symbol, SymbolKind,
+    TypeAliasData,
+};
 
 use crate::imports::extract_imports;
 use crate::treesitter::ParsedFile;
@@ -65,12 +68,85 @@ pub fn lower(parsed: &ParsedFile, path: impl Into<Utf8PathBuf>) -> Module {
         }
     }
 
-    // Calls: flat, whole-tree. The enclosing symbol is left unresolved here
-    // (`in_symbol: None`) — the semantic layer assigns it by span
-    // containment when it builds the call graph.
+    // Calls: flat, whole-tree, then resolve each to its enclosing top-level
+    // symbol by span containment. Enclosure is intra-module (a call's caller
+    // is declared in the same file), so it is resolved here where the IR is
+    // cached — warm re-analysis re-derives identical `in_symbol` ids.
     collect_calls(root, parsed, &mut module.calls);
+    resolve_call_enclosure(&mut module);
+
+    // References: every identifier/type-identifier *use* in the module,
+    // excluding the top-level declaration names themselves. This is the
+    // reachability signal for `typescript/unreachable-symbol`: a top-level
+    // symbol whose name never appears here is unused within the module.
+    // Deliberately an over-approximation (a coincidental same-named nested
+    // binding still counts as a use), so the rule can never flag a symbol
+    // that is genuinely referenced.
+    let decl_name_spans: std::collections::BTreeSet<(u32, u32)> = module
+        .symbols
+        .iter()
+        .map(|s| (s.span.start_byte, s.span.end_byte))
+        .collect();
+    collect_references(root, parsed, &decl_name_spans, &mut module.references);
 
     module
+}
+
+/// Collects identifier/type-identifier *uses* into [`Reference`]s, skipping
+/// the nodes that are top-level declaration names (`decl_name_spans`).
+///
+/// Node kinds gathered: `identifier` (value uses, JSX components, `new`
+/// targets), `type_identifier` (type annotations, heritage), and
+/// `shorthand_property_identifier` (`{ foo }` shorthand). `property_identifier`
+/// is excluded on purpose — `obj.foo` never refers to a top-level `foo`.
+fn collect_references(
+    node: Node<'_>,
+    parsed: &ParsedFile,
+    decl_name_spans: &std::collections::BTreeSet<(u32, u32)>,
+    out: &mut Vec<snowbros_ir::Reference>,
+) {
+    match node.kind() {
+        "identifier" | "type_identifier" | "shorthand_property_identifier" => {
+            let span = span_of(node);
+            if !decl_name_spans.contains(&(span.start_byte, span.end_byte)) {
+                out.push(snowbros_ir::Reference {
+                    name: parsed.text_of(node).to_string(),
+                    span,
+                });
+            }
+        }
+        _ => {}
+    }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_references(child, parsed, decl_name_spans, out);
+    }
+}
+
+/// Assigns each call its enclosing top-level function symbol (the caller
+/// side of a call-graph edge), by body-span containment.
+///
+/// Only top-level `Function` symbols with a body span can enclose a call.
+/// A call not inside any such body (e.g. a module-level initializer) keeps
+/// `in_symbol: None`. Nested closures resolve to their nearest enclosing
+/// *top-level* declaration — sufficient for reachability, never a false
+/// enclosure. First containing symbol in source order wins.
+fn resolve_call_enclosure(module: &mut Module) {
+    let path = module.path.clone();
+    for call in &mut module.calls {
+        for symbol in &module.symbols {
+            let SymbolKind::Function(data) = &symbol.kind else {
+                continue;
+            };
+            let Some(body) = data.body_span else {
+                continue;
+            };
+            if body.start_byte <= call.span.start_byte && call.span.end_byte <= body.end_byte {
+                call.in_symbol = Some(symbol.id(&path));
+                break;
+            }
+        }
+    }
 }
 
 /// Handles an `export …` statement: `export <decl>`, `export default …`,
@@ -161,6 +237,40 @@ fn lower_declaration(node: Node<'_>, parsed: &ParsedFile, exported: bool, out: &
                 out.push(Symbol {
                     name: parsed.text_of(name).to_string(),
                     kind: SymbolKind::Class(class_data(node, parsed)),
+                    span: span_of(name),
+                    exported,
+                });
+            }
+        }
+        "interface_declaration" => {
+            if let Some(name) = node.child_by_field_name("name") {
+                out.push(Symbol {
+                    name: parsed.text_of(name).to_string(),
+                    kind: SymbolKind::Interface(interface_data(node, parsed)),
+                    span: span_of(name),
+                    exported,
+                });
+            }
+        }
+        "type_alias_declaration" => {
+            if let Some(name) = node.child_by_field_name("name") {
+                let mut type_refs = Vec::new();
+                if let Some(value) = node.child_by_field_name("value") {
+                    collect_type_refs(value, parsed, &mut type_refs);
+                }
+                out.push(Symbol {
+                    name: parsed.text_of(name).to_string(),
+                    kind: SymbolKind::TypeAlias(TypeAliasData { type_refs }),
+                    span: span_of(name),
+                    exported,
+                });
+            }
+        }
+        "enum_declaration" => {
+            if let Some(name) = node.child_by_field_name("name") {
+                out.push(Symbol {
+                    name: parsed.text_of(name).to_string(),
+                    kind: SymbolKind::Enum(enum_data(node, parsed)),
                     span: span_of(name),
                     exported,
                 });
@@ -362,6 +472,101 @@ fn class_data(node: Node<'_>, parsed: &ParsedFile) -> ClassData {
         }
     }
     ClassData { members }
+}
+
+/// Extracts [`InterfaceData`] from an `interface_declaration`: member names
+/// from the interface body, and referenced type names from the `extends`
+/// clause and member type annotations (the interface's own name is excluded
+/// because it is a sibling `name` field, not inside the heritage or body).
+fn interface_data(node: Node<'_>, parsed: &ParsedFile) -> InterfaceData {
+    let mut members = Vec::new();
+    let mut extends = Vec::new();
+    let mut type_refs = Vec::new();
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        match child.kind() {
+            // Heritage: `extends A, B` — only the *base* type names, not
+            // their generic arguments (`extends B<A>` extends B, not A).
+            "extends_type_clause" => collect_heritage_names(child, parsed, &mut extends),
+            "interface_body" | "object_type" => {
+                let mut bc = child.walk();
+                for member in child.children(&mut bc) {
+                    match member.kind() {
+                        "property_signature" | "method_signature" => {
+                            if let Some(name) = member.child_by_field_name("name") {
+                                members.push(parsed.text_of(name).to_string());
+                            }
+                            collect_type_refs(member, parsed, &mut type_refs);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    InterfaceData {
+        members,
+        extends,
+        type_refs,
+    }
+}
+
+/// Enum member names, in source order.
+fn enum_data(node: Node<'_>, parsed: &ParsedFile) -> EnumData {
+    let mut members = Vec::new();
+    if let Some(body) = node.child_by_field_name("body") {
+        let mut cursor = body.walk();
+        for child in body.children(&mut cursor) {
+            match child.kind() {
+                "property_identifier" => members.push(parsed.text_of(child).to_string()),
+                "enum_assignment" => {
+                    if let Some(name) = child.child_by_field_name("name") {
+                        members.push(parsed.text_of(name).to_string());
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    EnumData { members }
+}
+
+/// Collects the *base* type names of an `extends_type_clause`, excluding
+/// generic arguments. `extends B<A>` yields `B` only — `A` there is a type
+/// argument, not a base type, so treating it as heritage would fabricate a
+/// cycle. Each heritage entry is either a bare `type_identifier` or a
+/// `generic_type` whose `name` field is the base.
+fn collect_heritage_names(clause: Node<'_>, parsed: &ParsedFile, out: &mut Vec<String>) {
+    let mut cursor = clause.walk();
+    for child in clause.children(&mut cursor) {
+        match child.kind() {
+            "type_identifier" => out.push(parsed.text_of(child).to_string()),
+            "generic_type" => {
+                if let Some(name) = child.child_by_field_name("name") {
+                    // The base may itself be nested (e.g. `A.B`); take the
+                    // trailing type_identifier of the name node.
+                    if name.kind() == "type_identifier" {
+                        out.push(parsed.text_of(name).to_string());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Depth-first collection of referenced type names (`type_identifier`
+/// nodes) beneath `node`, in source order. Duplicates are kept — the
+/// semantic layer deduplicates when it builds type-reference edges.
+fn collect_type_refs(node: Node<'_>, parsed: &ParsedFile, out: &mut Vec<String>) {
+    if node.kind() == "type_identifier" {
+        out.push(parsed.text_of(node).to_string());
+    }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_type_refs(child, parsed, out);
+    }
 }
 
 /// Depth-first collection of call sites. `in_symbol` is intentionally left
@@ -575,7 +780,45 @@ export function C() {
             .collect();
         assert!(callees.contains(&("useState", 1)));
         assert!(callees.contains(&("doThing", 3)));
-        assert!(m.calls.iter().all(|c| c.in_symbol.is_none()));
+        // Both calls sit inside `C`'s body, so enclosure resolves to it.
+        let c_id = m.symbols[0].id(&m.path);
+        assert!(m.calls.iter().all(|c| c.in_symbol.as_ref() == Some(&c_id)));
+    }
+
+    #[test]
+    fn call_enclosure_resolves_to_top_level_function() {
+        let m = lower_src(
+            r#"
+setup();
+export function outer() {
+  helper();
+  const inner = () => nested();
+}
+function other() { lone(); }
+"#,
+            Language::TypeScript,
+            "a.ts",
+        );
+        let find = |callee: &str| m.calls.iter().find(|c| c.callee == callee).unwrap().clone();
+        let outer_id = m
+            .symbols
+            .iter()
+            .find(|s| s.name == "outer")
+            .unwrap()
+            .id(&m.path);
+        let other_id = m
+            .symbols
+            .iter()
+            .find(|s| s.name == "other")
+            .unwrap()
+            .id(&m.path);
+
+        // Module-level call: no enclosing function.
+        assert_eq!(find("setup").in_symbol, None);
+        // Direct + nested-closure calls resolve to the top-level function.
+        assert_eq!(find("helper").in_symbol, Some(outer_id.clone()));
+        assert_eq!(find("nested").in_symbol, Some(outer_id));
+        assert_eq!(find("lone").in_symbol, Some(other_id));
     }
 
     #[test]
@@ -632,6 +875,120 @@ export default class D { m() {} }
         assert!(!returns_jsx(
             "export function makeRender() { return function r() { return <i/>; }; }"
         ));
+    }
+
+    #[test]
+    fn lowers_interface_with_members_and_type_refs() {
+        let m = lower_src(
+            "export interface User extends Base { id: number; profile: Profile; greet(): string; }",
+            Language::TypeScript,
+            "a.ts",
+        );
+        assert_eq!(names(&m), vec!["User"]);
+        assert!(m.symbols[0].exported);
+        match &m.symbols[0].kind {
+            SymbolKind::Interface(d) => {
+                assert_eq!(d.members, vec!["id", "profile", "greet"]);
+                // `Base` is heritage; `Profile` is a member ref; own name excluded.
+                assert_eq!(d.extends, vec!["Base"]);
+                assert!(d.type_refs.contains(&"Profile".to_string()));
+                assert!(!d.type_refs.contains(&"Base".to_string()));
+                assert!(!d.type_refs.contains(&"User".to_string()));
+            }
+            other => panic!("expected interface, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn heritage_excludes_generic_arguments() {
+        let m = lower_src(
+            "interface A extends B<A>, C {}",
+            Language::TypeScript,
+            "a.ts",
+        );
+        match &m.symbols[0].kind {
+            SymbolKind::Interface(d) => {
+                // Base types only — `A` as a type argument is not heritage.
+                assert_eq!(d.extends, vec!["B", "C"]);
+            }
+            other => panic!("expected interface, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_type_alias_with_refs() {
+        let m = lower_src(
+            "type Wrapper = Box<User>; type ID = string;",
+            Language::TypeScript,
+            "a.ts",
+        );
+        assert_eq!(names(&m), vec!["Wrapper", "ID"]);
+        match &m.symbols[0].kind {
+            SymbolKind::TypeAlias(d) => {
+                assert!(d.type_refs.contains(&"Box".to_string()));
+                assert!(d.type_refs.contains(&"User".to_string()));
+            }
+            other => panic!("expected type alias, got {other:?}"),
+        }
+        // A predefined-type alias references no named types.
+        match &m.symbols[1].kind {
+            SymbolKind::TypeAlias(d) => assert!(d.type_refs.is_empty()),
+            other => panic!("expected type alias, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_enum_members() {
+        let m = lower_src(
+            "export enum Color { Red, Green = 2, Blue }",
+            Language::TypeScript,
+            "a.ts",
+        );
+        match &m.symbols[0].kind {
+            SymbolKind::Enum(d) => assert_eq!(d.members, vec!["Red", "Green", "Blue"]),
+            other => panic!("expected enum, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn references_capture_uses_not_declarations() {
+        let m = lower_src(
+            r#"
+function helper() {}
+export function run() { helper(); }
+"#,
+            Language::TypeScript,
+            "a.ts",
+        );
+        let ref_names: Vec<&str> = m.references.iter().map(|r| r.name.as_str()).collect();
+        // `helper` is used inside `run` → a reference; declaration names are
+        // excluded, so `run`/`helper` declaration sites are not counted.
+        assert!(ref_names.contains(&"helper"));
+        assert!(!ref_names.contains(&"run"));
+    }
+
+    #[test]
+    fn unused_private_symbol_has_no_reference() {
+        let m = lower_src(
+            "function orphan() {}\nexport function used() {}\n",
+            Language::TypeScript,
+            "a.ts",
+        );
+        let ref_names: Vec<&str> = m.references.iter().map(|r| r.name.as_str()).collect();
+        assert!(!ref_names.contains(&"orphan"));
+    }
+
+    #[test]
+    fn type_symbols_report_is_type() {
+        let m = lower_src(
+            "interface I {} type T = string; enum E { A } function f() {}",
+            Language::TypeScript,
+            "a.ts",
+        );
+        assert!(m.symbols[0].kind.is_type());
+        assert!(m.symbols[1].kind.is_type());
+        assert!(m.symbols[2].kind.is_type());
+        assert!(!m.symbols[3].kind.is_type());
     }
 
     #[test]

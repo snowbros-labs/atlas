@@ -19,6 +19,11 @@ pub struct UnresolvedImport {
     pub specifier: String,
     /// Location of the specifier in the file.
     pub span: Span,
+    /// Whether the specifier matched a configured tsconfig `paths` alias
+    /// but still resolved nowhere — a *broken alias* (typo or missing
+    /// target) rather than an ordinary unresolved import. Set by the
+    /// resolver-aware pipeline; `false` by default.
+    pub matched_alias: bool,
 }
 
 /// A resolved project-internal import with the names it binds.

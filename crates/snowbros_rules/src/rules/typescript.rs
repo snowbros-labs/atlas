@@ -155,6 +155,109 @@ impl Rule for DuplicateDeclaration {
     }
 }
 
+/// `typescript/circular-type-reference` — a cycle of interfaces connected
+/// by `extends` heritage within a module.
+///
+/// Such a cycle is a TypeScript error (TS2310), so the rule is
+/// zero-false-positive by construction: only heritage is followed (member
+/// references are legal recursion and ignored), generic arguments are
+/// excluded from heritage, and detection is intra-module.
+pub struct CircularTypeReference;
+
+impl Rule for CircularTypeReference {
+    fn id(&self) -> &'static str {
+        "typescript/circular-type-reference"
+    }
+
+    fn run(&self, ctx: &AnalysisContext<'_>) -> Vec<Diagnostic> {
+        let Some(model) = ctx.semantic else {
+            return Vec::new();
+        };
+
+        let mut diagnostics = Vec::new();
+        for cycle in model.circular_type_references() {
+            // Anchor at the first member (members are name-sorted).
+            let (first_name, first_span) = &cycle.members[0];
+            let names: Vec<&str> = cycle.members.iter().map(|(n, _)| n.as_str()).collect();
+            let chain = if cycle.members.len() == 1 {
+                format!("`{first_name}` extends itself")
+            } else {
+                format!("`{}` extend each other", names.join("` ↔ `"))
+            };
+            diagnostics.push(
+                Diagnostic::new(
+                    self.id(),
+                    "Circular type reference",
+                    format!(
+                        "Interface heritage cycle in `{}`: {chain}. A type that \
+                         recursively extends itself is a TypeScript error (TS2310).",
+                        cycle.module
+                    ),
+                    "typescript",
+                    Severity::High,
+                    Confidence::Certain,
+                    SourceLocation::new(cycle.module.clone(), *first_span),
+                )
+                .with_evidence(Evidence::note(format!(
+                    "`extends` cycle: {}",
+                    names.join(" → ")
+                ))),
+            );
+        }
+        diagnostics
+    }
+}
+
+/// `typescript/unreachable-symbol` — a non-exported top-level declaration
+/// that no code in its module references.
+///
+/// Provably dead: reference detection over-approximates uses, so a flagged
+/// symbol is named nowhere in its module and, being unexported, is
+/// unreachable from outside. Entry/config/declaration files are excluded.
+pub struct UnreachableSymbol;
+
+impl Rule for UnreachableSymbol {
+    fn id(&self) -> &'static str {
+        "typescript/unreachable-symbol"
+    }
+
+    fn run(&self, ctx: &AnalysisContext<'_>) -> Vec<Diagnostic> {
+        let Some(model) = ctx.semantic else {
+            return Vec::new();
+        };
+
+        let mut diagnostics = Vec::new();
+        for sym in model.unreachable_symbols() {
+            let path = sym.module;
+            if is_excluded(path.as_str()) {
+                continue;
+            }
+            let kind = sym.symbol.kind.tag();
+            diagnostics.push(
+                Diagnostic::new(
+                    self.id(),
+                    "Unreachable symbol",
+                    format!(
+                        "{kind} `{}` in `{path}` is never referenced and is not \
+                         exported — it is dead code. Remove it, or export it if it \
+                         is meant to be public.",
+                        sym.symbol.name
+                    ),
+                    "typescript",
+                    Severity::Low,
+                    Confidence::Likely,
+                    SourceLocation::new(path.to_owned(), sym.symbol.span),
+                )
+                .with_evidence(Evidence::note(format!(
+                    "symbol `{}` has no reference in its module",
+                    sym.id()
+                ))),
+            );
+        }
+        diagnostics
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,6 +346,56 @@ mod tests {
     }
 
     #[test]
+    fn circular_type_reference_reported() {
+        let m = model(&[(
+            "src/types.ts",
+            "interface A extends B {}\ninterface B extends A {}\n",
+        )]);
+        let g = SemanticGraph::new();
+        let diags = CircularTypeReference.run(&ctx(&g, &m, &[]));
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("`A`"));
+        assert!(diags[0].message.contains("`B`"));
+        assert!(diags[0].evidence[0].description.contains("A → B"));
+    }
+
+    #[test]
+    fn legal_member_recursion_not_flagged() {
+        // Mutual member references type-check — must not fire.
+        let m = model(&[(
+            "src/types.ts",
+            "interface A { b: B }\ninterface B { a: A }\n",
+        )]);
+        let g = SemanticGraph::new();
+        assert!(CircularTypeReference.run(&ctx(&g, &m, &[])).is_empty());
+    }
+
+    #[test]
+    fn unreachable_symbol_reported() {
+        let m = model(&[(
+            "src/util.ts",
+            "function orphan() {}\nexport function used() { used() }\n",
+        )]);
+        let g = SemanticGraph::new();
+        let diags = UnreachableSymbol.run(&ctx(&g, &m, &[]));
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("`orphan`"));
+        assert!(diags[0].evidence[0]
+            .description
+            .contains("#function#orphan"));
+    }
+
+    #[test]
+    fn referenced_private_symbol_is_live() {
+        let m = model(&[(
+            "src/util.ts",
+            "function helper() {}\nexport function run() { helper() }\n",
+        )]);
+        let g = SemanticGraph::new();
+        assert!(UnreachableSymbol.run(&ctx(&g, &m, &[])).is_empty());
+    }
+
+    #[test]
     fn no_semantic_model_is_no_findings() {
         let g = SemanticGraph::new();
         let ctx = AnalysisContext::new(
@@ -252,5 +405,7 @@ mod tests {
         );
         assert!(UnusedExport.run(&ctx).is_empty());
         assert!(DuplicateDeclaration.run(&ctx).is_empty());
+        assert!(CircularTypeReference.run(&ctx).is_empty());
+        assert!(UnreachableSymbol.run(&ctx).is_empty());
     }
 }

@@ -38,6 +38,21 @@ pub struct Duplicate {
     pub spans: Vec<Span>,
 }
 
+/// A cycle of interfaces connected by `extends` heritage, within one module.
+///
+/// Such a cycle is always a TypeScript error (TS2310, "recursively
+/// references itself as a base type"), so flagging it yields no false
+/// positives. Member-annotation type cycles are legal and are *not*
+/// represented here.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeCycle {
+    /// Module the cycle occurs in.
+    pub module: Utf8PathBuf,
+    /// The interfaces in the cycle, each `(name, declaration span)`, sorted
+    /// by name for deterministic reporting.
+    pub members: Vec<(String, Span)>,
+}
+
 /// A project-wide index of declared symbols, built from lowered IR.
 ///
 /// Modules are keyed by path in a [`BTreeMap`] so every traversal is
@@ -161,16 +176,182 @@ impl SemanticModel {
         out
     }
 
+    /// Cycles of interfaces connected by `extends` heritage, per module.
+    ///
+    /// Detection is intra-module: heritage is matched only to interfaces
+    /// declared in the *same* file (cross-file type resolution is a later
+    /// milestone), so no cross-file guess is made. Same-name interface
+    /// declarations merge, and their `extends` lists union. A self-extends
+    /// (`interface A extends A`) is a one-member cycle. Results are sorted
+    /// by (module, first member name); members are sorted by name.
+    pub fn circular_type_references(&self) -> Vec<TypeCycle> {
+        let mut out = Vec::new();
+        for (path, module) in &self.modules {
+            // Interface name → (first span, unioned extends targets). Only
+            // interfaces are nodes; merging same-name decls is TS-faithful.
+            let mut span_of: BTreeMap<&str, Span> = BTreeMap::new();
+            let mut edges: BTreeMap<&str, std::collections::BTreeSet<&str>> = BTreeMap::new();
+            for symbol in &module.symbols {
+                if let SymbolKind::Interface(data) = &symbol.kind {
+                    span_of.entry(&symbol.name).or_insert(symbol.span);
+                    let set = edges.entry(&symbol.name).or_default();
+                    for target in &data.extends {
+                        set.insert(target.as_str());
+                    }
+                }
+            }
+            // Restrict edges to targets that are interfaces in this module.
+            let nodes: Vec<&str> = span_of.keys().copied().collect();
+            let adj: BTreeMap<&str, Vec<&str>> = nodes
+                .iter()
+                .map(|&n| {
+                    let mut targets: Vec<&str> = edges
+                        .get(n)
+                        .into_iter()
+                        .flatten()
+                        .copied()
+                        .filter(|t| span_of.contains_key(t))
+                        .collect();
+                    targets.sort_unstable();
+                    (n, targets)
+                })
+                .collect();
+
+            for scc in tarjan_scc(&nodes, &adj) {
+                let is_cycle = scc.len() > 1 || (scc.len() == 1 && adj[scc[0]].contains(&scc[0]));
+                if !is_cycle {
+                    continue;
+                }
+                let mut members: Vec<(String, Span)> =
+                    scc.iter().map(|&n| (n.to_string(), span_of[n])).collect();
+                members.sort_by(|a, b| a.0.cmp(&b.0));
+                out.push(TypeCycle {
+                    module: path.clone(),
+                    members,
+                });
+            }
+        }
+        out.sort_by(|a, b| {
+            a.module
+                .cmp(&b.module)
+                .then_with(|| a.members[0].0.cmp(&b.members[0].0))
+        });
+        out
+    }
+
+    /// Non-exported top-level declarations that are never referenced within
+    /// their own module — provably dead within the project.
+    ///
+    /// A candidate must be a *declaration* kind (function, class, interface,
+    /// type alias, or enum — not a plain binding, whose initializer may run
+    /// for side effects) that is not exported (an export could be public
+    /// API) and whose name appears in no [`ir::Reference`] in the module.
+    /// Reference collection over-approximates uses, so a symbol reaching this
+    /// list is genuinely unused: nothing in the module names it and, being
+    /// unexported, nothing outside can either. Recursive self-use counts as
+    /// a reference, so a self-recursive-but-otherwise-dead function is not
+    /// flagged (a safe miss). Sorted by (module, source order).
+    ///
+    /// [`ir::Reference`]: snowbros_ir::Reference
+    pub fn unreachable_symbols(&self) -> Vec<SymbolRef<'_>> {
+        let mut out = Vec::new();
+        for (path, module) in &self.modules {
+            let referenced: std::collections::BTreeSet<&str> =
+                module.references.iter().map(|r| r.name.as_str()).collect();
+            for symbol in &module.symbols {
+                if symbol.exported || !is_declaration_kind(&symbol.kind) {
+                    continue;
+                }
+                if referenced.contains(symbol.name.as_str()) {
+                    continue;
+                }
+                out.push(SymbolRef {
+                    module: path,
+                    symbol,
+                });
+            }
+        }
+        out
+    }
+
+    /// The first exported symbol named `name` in `module`, if any — the
+    /// resolution target for a cross-file reference to `name`.
+    pub fn exported_symbol(&self, module: impl AsRef<Utf8Path>, name: &str) -> Option<SymbolId> {
+        let (path, m) = self.modules.get_key_value(module.as_ref())?;
+        m.symbols
+            .iter()
+            .find(|s| s.exported && s.name == name)
+            .map(|s| s.id(path))
+    }
+
+    /// Every resolved intra-module call edge, as `(caller, callee)` symbol
+    /// ids — see [`SemanticModel::resolved_call_edges`] with no imports.
+    pub fn call_edges(&self) -> Vec<(SymbolId, SymbolId)> {
+        self.resolved_call_edges(&ImportedNames::new())
+    }
+
+    /// Every resolved call edge, as `(caller, callee)` symbol ids, in
+    /// (module, source) order.
+    ///
+    /// A call contributes an edge when both sides are known: its enclosing
+    /// top-level function (`Call::in_symbol`, set during lowering) and a
+    /// resolvable callee. Resolution order for a plain-identifier callee:
+    /// 1. a top-level symbol in the *same* module (intra-file), else
+    /// 2. an unaliased named import of that name (`imports`), resolving to
+    ///    the matching **exported** symbol in the target module (cross-file).
+    ///
+    /// Member calls (`foo.bar`), default/namespace imports, and aliased
+    /// imports are deliberately unresolved: `imports` keys are the names
+    /// actually bound as callables, and `default`/`*` are excluded by the
+    /// caller. Accuracy over quantity — an unresolved callee yields no edge
+    /// rather than a guessed one.
+    pub fn resolved_call_edges(&self, imports: &ImportedNames) -> Vec<(SymbolId, SymbolId)> {
+        let mut out = Vec::new();
+        for (path, module) in &self.modules {
+            // name → first top-level symbol declaring it (source order).
+            let mut by_name: BTreeMap<&str, &Symbol> = BTreeMap::new();
+            for symbol in &module.symbols {
+                by_name.entry(&symbol.name).or_insert(symbol);
+            }
+            let module_imports = imports.get(path);
+            for call in &module.calls {
+                let Some(caller) = &call.in_symbol else {
+                    continue;
+                };
+                let callee = call.callee.as_str();
+                if let Some(sym) = by_name.get(callee) {
+                    // Intra-file: a local declaration shadows any import.
+                    out.push((caller.clone(), sym.id(path)));
+                } else if let Some(target) = module_imports.and_then(|m| m.get(callee)) {
+                    // Cross-file: resolve to the exported symbol in target.
+                    if let Some(callee_id) = self.exported_symbol(target, callee) {
+                        out.push((caller.clone(), callee_id));
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// Populates the semantic graph with symbol-level structure, intra-file
+    /// calls only. See [`SemanticModel::populate_graph_with_imports`].
+    pub fn populate_graph(&self, graph: &mut SemanticGraph) {
+        self.populate_graph_with_imports(graph, &ImportedNames::new());
+    }
+
     /// Populates the semantic graph with symbol-level structure:
     /// - a [`Node`] per file (deduplicated by the graph);
     /// - a [`Node`] per declared symbol;
     /// - a `Contains` edge file → symbol for every declaration;
-    /// - an `Exports` edge file → symbol for every exported declaration.
+    /// - an `Exports` edge file → symbol for every exported declaration;
+    /// - a `Calls` edge caller → callee for every resolved call
+    ///   (intra-file, plus cross-file via `imports`; see
+    ///   [`SemanticModel::resolved_call_edges`]);
+    /// - a `TypeRef` edge interface → base interface for every `extends`
+    ///   heritage link resolved within the same module.
     ///
     /// Additive: existing file/package nodes and edges are untouched.
-    /// `Calls` edges are intentionally not built here — call resolution is
-    /// the call-graph milestone's job (M2).
-    pub fn populate_graph(&self, graph: &mut SemanticGraph) {
+    pub fn populate_graph_with_imports(&self, graph: &mut SemanticGraph, imports: &ImportedNames) {
         for (path, module) in &self.modules {
             let file = graph.add_node(Node::file(path.clone()));
             for symbol in &module.symbols {
@@ -185,6 +366,147 @@ impl SemanticModel {
                 }
             }
         }
+        // Call edges, added after all symbol nodes exist so both endpoints
+        // resolve. Node labels are stable (`module#kind#name`), so the
+        // caller/callee ids map onto the nodes inserted above.
+        for (caller, callee) in self.resolved_call_edges(imports) {
+            let (Some(from), Some(to)) = (
+                graph.find(&symbol_node_label(&caller)),
+                graph.find(&symbol_node_label(&callee)),
+            ) else {
+                continue;
+            };
+            graph.add_edge(from, to, EdgeKind::Calls);
+        }
+        // Inheritance edges: interface `extends` base interfaces declared in
+        // the same module (matches the intra-module scope of the type rules).
+        for (path, module) in &self.modules {
+            let interfaces: std::collections::BTreeSet<&str> = module
+                .symbols
+                .iter()
+                .filter(|s| matches!(s.kind, SymbolKind::Interface(_)))
+                .map(|s| s.name.as_str())
+                .collect();
+            for symbol in &module.symbols {
+                let SymbolKind::Interface(data) = &symbol.kind else {
+                    continue;
+                };
+                let from_label = format!("{path}#interface#{}", symbol.name);
+                for base in &data.extends {
+                    if !interfaces.contains(base.as_str()) {
+                        continue;
+                    }
+                    let to_label = format!("{path}#interface#{base}");
+                    let (Some(from), Some(to)) = (graph.find(&from_label), graph.find(&to_label))
+                    else {
+                        continue;
+                    };
+                    graph.add_edge(from, to, EdgeKind::TypeRef);
+                }
+            }
+        }
+    }
+}
+
+/// Resolved project-internal imports, per module: for each module path, a
+/// map from the local callable name to the module it resolves to.
+///
+/// Only unaliased **named** imports belong here — a name whose local
+/// binding equals its exported name, so a call to it resolves to that
+/// export in the target. Default/namespace/aliased imports are excluded by
+/// the builder because their local name cannot be matched to a callee
+/// safely.
+pub type ImportedNames = BTreeMap<Utf8PathBuf, BTreeMap<String, Utf8PathBuf>>;
+
+/// Whether a symbol kind is a *declaration* whose disuse means dead code —
+/// a function, class, or type declaration. Plain `const`/`let`/`var`
+/// bindings are excluded: their initializer may run for side effects, so an
+/// unreferenced binding is not necessarily dead.
+fn is_declaration_kind(kind: &SymbolKind) -> bool {
+    matches!(
+        kind,
+        SymbolKind::Function(_)
+            | SymbolKind::Class(_)
+            | SymbolKind::Interface(_)
+            | SymbolKind::TypeAlias(_)
+            | SymbolKind::Enum(_)
+    )
+}
+
+/// Tarjan's strongly-connected-components over a string-keyed graph.
+///
+/// `nodes` is iterated in the given order (callers pass a sorted list) and
+/// each adjacency list is likewise pre-sorted, so the returned components —
+/// and the order of nodes within them — are deterministic.
+fn tarjan_scc<'a>(nodes: &[&'a str], adj: &BTreeMap<&'a str, Vec<&'a str>>) -> Vec<Vec<&'a str>> {
+    struct State<'a, 'b> {
+        adj: &'b BTreeMap<&'a str, Vec<&'a str>>,
+        index: BTreeMap<&'a str, usize>,
+        low: BTreeMap<&'a str, usize>,
+        on_stack: std::collections::BTreeSet<&'a str>,
+        stack: Vec<&'a str>,
+        next: usize,
+        out: Vec<Vec<&'a str>>,
+    }
+    fn strong<'a>(v: &'a str, st: &mut State<'a, '_>) {
+        st.index.insert(v, st.next);
+        st.low.insert(v, st.next);
+        st.next += 1;
+        st.stack.push(v);
+        st.on_stack.insert(v);
+        if let Some(succ) = st.adj.get(v) {
+            for &w in succ {
+                if !st.index.contains_key(w) {
+                    strong(w, st);
+                    let lw = st.low[w];
+                    let lv = st.low[v];
+                    st.low.insert(v, lv.min(lw));
+                } else if st.on_stack.contains(w) {
+                    let iw = st.index[w];
+                    let lv = st.low[v];
+                    st.low.insert(v, lv.min(iw));
+                }
+            }
+        }
+        if st.low[v] == st.index[v] {
+            let mut component = Vec::new();
+            while let Some(w) = st.stack.pop() {
+                st.on_stack.remove(w);
+                component.push(w);
+                if w == v {
+                    break;
+                }
+            }
+            st.out.push(component);
+        }
+    }
+    let mut st = State {
+        adj,
+        index: BTreeMap::new(),
+        low: BTreeMap::new(),
+        on_stack: std::collections::BTreeSet::new(),
+        stack: Vec::new(),
+        next: 0,
+        out: Vec::new(),
+    };
+    for &n in nodes {
+        if !st.index.contains_key(n) {
+            strong(n, &mut st);
+        }
+    }
+    st.out
+}
+
+/// The graph node label for a symbol id.
+///
+/// A [`SymbolId`] is `path#kind#name@start-end`; a symbol *node* label is
+/// `path#kind#name` (spans are not part of node identity). Strip the span
+/// suffix to join the two.
+fn symbol_node_label(id: &SymbolId) -> String {
+    let s = id.as_str();
+    match s.rfind('@') {
+        Some(at) => s[..at].to_string(),
+        None => s.to_string(),
     }
 }
 
@@ -363,6 +685,250 @@ mod tests {
         assert_eq!(g.node_count(), 4);
         assert!(g.find("a.ts#function#f").is_some());
         assert!(g.find("b.ts#function#f").is_some());
+    }
+
+    fn func(name: &str, exported: bool, name_at: u32, body: (u32, u32)) -> Symbol {
+        Symbol {
+            name: name.to_string(),
+            kind: SymbolKind::Function(FunctionData {
+                body_span: Some(span(body.0, body.1)),
+                ..FunctionData::default()
+            }),
+            span: span(name_at, name_at + 1),
+            exported,
+        }
+    }
+
+    #[test]
+    fn resolves_intra_module_call_edges() {
+        use snowbros_ir::Call;
+        let mut m = module(
+            "a.ts",
+            vec![
+                func("caller", true, 0, (10, 90)),
+                func("callee", false, 100, (110, 120)),
+            ],
+        );
+        let caller_id = m.symbols[0].id("a.ts");
+        // Call to `callee` from inside `caller`'s body.
+        m.calls.push(Call {
+            callee: "callee".to_string(),
+            arg_count: 0,
+            span: span(50, 58),
+            in_symbol: Some(caller_id.clone()),
+        });
+        // Call to an unknown / external name — no edge.
+        m.calls.push(Call {
+            callee: "external".to_string(),
+            arg_count: 0,
+            span: span(60, 68),
+            in_symbol: Some(caller_id.clone()),
+        });
+
+        let model = SemanticModel::from_modules([m]);
+        let edges = model.call_edges();
+        assert_eq!(edges.len(), 1);
+        assert_eq!(edges[0].0, caller_id);
+        assert_eq!(edges[0].1.as_str(), "a.ts#function#callee@100-101");
+    }
+
+    #[test]
+    fn populate_graph_adds_calls_edge() {
+        use snowbros_ir::Call;
+        let mut m = module(
+            "a.ts",
+            vec![
+                func("f", true, 0, (10, 90)),
+                func("g", false, 100, (110, 120)),
+            ],
+        );
+        let f_id = m.symbols[0].id("a.ts");
+        m.calls.push(Call {
+            callee: "g".to_string(),
+            arg_count: 0,
+            span: span(50, 51),
+            in_symbol: Some(f_id),
+        });
+        let model = SemanticModel::from_modules([m]);
+        let mut graph = SemanticGraph::new();
+        model.populate_graph(&mut graph);
+
+        let f = graph.find("a.ts#function#f").unwrap();
+        let g = graph.find("a.ts#function#g").unwrap();
+        assert!(graph.has_outgoing(f, EdgeKind::Calls));
+        assert!(graph.has_incoming(g, EdgeKind::Calls));
+    }
+
+    #[test]
+    fn resolves_cross_file_call_edge() {
+        use snowbros_ir::Call;
+        // consumer.ts imports `helper` from util.ts and calls it.
+        let mut consumer = module("consumer.ts", vec![func("run", true, 0, (10, 90))]);
+        let run_id = consumer.symbols[0].id("consumer.ts");
+        consumer.calls.push(Call {
+            callee: "helper".to_string(),
+            arg_count: 0,
+            span: span(50, 58),
+            in_symbol: Some(run_id.clone()),
+        });
+        let util = module("util.ts", vec![func("helper", true, 0, (10, 20))]);
+        let model = SemanticModel::from_modules([consumer, util]);
+
+        // Without imports: unresolved (helper is not local to consumer.ts).
+        assert!(model.call_edges().is_empty());
+
+        // With the named-import mapping helper → util.ts: resolved.
+        let mut imports = ImportedNames::new();
+        imports
+            .entry("consumer.ts".into())
+            .or_default()
+            .insert("helper".to_string(), "util.ts".into());
+        let edges = model.resolved_call_edges(&imports);
+        assert_eq!(edges.len(), 1);
+        assert_eq!(edges[0].0, run_id);
+        assert_eq!(edges[0].1.as_str(), "util.ts#function#helper@0-1");
+    }
+
+    #[test]
+    fn local_declaration_shadows_import() {
+        use snowbros_ir::Call;
+        // consumer declares its own `helper` and also imports one — the
+        // local wins.
+        let mut consumer = module(
+            "consumer.ts",
+            vec![
+                func("run", true, 0, (10, 90)),
+                func("helper", false, 100, (110, 120)),
+            ],
+        );
+        let run_id = consumer.symbols[0].id("consumer.ts");
+        consumer.calls.push(Call {
+            callee: "helper".to_string(),
+            arg_count: 0,
+            span: span(50, 58),
+            in_symbol: Some(run_id),
+        });
+        let util = module("util.ts", vec![func("helper", true, 0, (10, 20))]);
+        let model = SemanticModel::from_modules([consumer, util]);
+        let mut imports = ImportedNames::new();
+        imports
+            .entry("consumer.ts".into())
+            .or_default()
+            .insert("helper".to_string(), "util.ts".into());
+        let edges = model.resolved_call_edges(&imports);
+        assert_eq!(edges.len(), 1);
+        // Resolves to the LOCAL helper, not util's.
+        assert_eq!(edges[0].1.as_str(), "consumer.ts#function#helper@100-101");
+    }
+
+    fn iface(name: &str, extends: &[&str], at: u32) -> Symbol {
+        use snowbros_ir::InterfaceData;
+        Symbol {
+            name: name.to_string(),
+            kind: SymbolKind::Interface(InterfaceData {
+                members: Vec::new(),
+                extends: extends.iter().map(|s| s.to_string()).collect(),
+                type_refs: Vec::new(),
+            }),
+            span: span(at, at + 1),
+            exported: false,
+        }
+    }
+
+    #[test]
+    fn detects_mutual_interface_extends_cycle() {
+        let model = SemanticModel::from_modules([module(
+            "a.ts",
+            vec![
+                iface("A", &["B"], 0),
+                iface("B", &["A"], 10),
+                iface("C", &["A"], 20), // C→A is not a cycle (A does not reach C)
+            ],
+        )]);
+        let cycles = model.circular_type_references();
+        assert_eq!(cycles.len(), 1);
+        assert_eq!(cycles[0].module, "a.ts");
+        let names: Vec<&str> = cycles[0].members.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(names, vec!["A", "B"]);
+    }
+
+    #[test]
+    fn detects_self_extends_cycle() {
+        let model =
+            SemanticModel::from_modules([module("a.ts", vec![iface("Loop", &["Loop"], 0)])]);
+        let cycles = model.circular_type_references();
+        assert_eq!(cycles.len(), 1);
+        assert_eq!(cycles[0].members.len(), 1);
+        assert_eq!(cycles[0].members[0].0, "Loop");
+    }
+
+    #[test]
+    fn acyclic_and_external_heritage_are_clean() {
+        // A→B linear (no cycle); D extends an interface not in this module.
+        let model = SemanticModel::from_modules([module(
+            "a.ts",
+            vec![
+                iface("A", &["B"], 0),
+                iface("B", &[], 10),
+                iface("D", &["Elsewhere"], 20),
+            ],
+        )]);
+        assert!(model.circular_type_references().is_empty());
+    }
+
+    #[test]
+    fn unreachable_symbols_detected_via_references() {
+        use snowbros_ir::Reference;
+        let mut m = module(
+            "a.ts",
+            vec![
+                func("used", false, 0, (10, 90)),
+                func("dead", false, 100, (110, 120)),
+                func("api", true, 200, (210, 220)), // exported → skip
+            ],
+        );
+        // `used` is referenced somewhere; `dead` and `api` are not.
+        m.references.push(Reference {
+            name: "used".to_string(),
+            span: span(300, 304),
+        });
+        let model = SemanticModel::from_modules([m]);
+        let dead: Vec<&str> = model
+            .unreachable_symbols()
+            .iter()
+            .map(|s| s.symbol.name.as_str())
+            .collect();
+        assert_eq!(dead, vec!["dead"]);
+    }
+
+    #[test]
+    fn populate_graph_adds_typeref_edge() {
+        // interface Derived extends Base → a TypeRef edge Derived → Base.
+        let model = SemanticModel::from_modules([module(
+            "a.ts",
+            vec![iface("Derived", &["Base"], 0), iface("Base", &[], 10)],
+        )]);
+        let mut g = SemanticGraph::new();
+        model.populate_graph(&mut g);
+        let derived = g.find("a.ts#interface#Derived").unwrap();
+        let base = g.find("a.ts#interface#Base").unwrap();
+        assert!(g.has_outgoing(derived, EdgeKind::TypeRef));
+        assert!(g.has_incoming(base, EdgeKind::TypeRef));
+    }
+
+    #[test]
+    fn no_call_edge_without_enclosure() {
+        use snowbros_ir::Call;
+        let mut m = module("a.ts", vec![func("g", false, 100, (110, 120))]);
+        // Module-level call with no enclosing symbol → not an edge.
+        m.calls.push(Call {
+            callee: "g".to_string(),
+            arg_count: 0,
+            span: span(0, 1),
+            in_symbol: None,
+        });
+        let model = SemanticModel::from_modules([m]);
+        assert!(model.call_edges().is_empty());
     }
 
     #[test]

@@ -1,0 +1,28 @@
+id = "typescript/circular-type-reference"
+title = "Circular type reference"
+category = "typescript"
+severity = "high"
+confidence = "certain"
+maturity = "preview"
+description = "Detects a cycle of interfaces connected by `extends` heritage within a module, resolved over the Atlas IR symbol model."
+rationale = "An interface that extends itself transitively is a TypeScript error (TS2310, 'recursively references itself as a base type'). The code does not type-check, so the cycle must be broken."
+recommendation = "Break the heritage cycle: drop the offending `extends`, or move the shared shape into a separate base interface that each member extends instead."
+false_positives = "None expected. Only `extends` heritage is followed, never member-annotation references (`interface A { b: B }` mutual recursion is legal and is not flagged). Generic arguments in a heritage clause (`extends Box<A>`) are excluded, so they cannot fabricate a self-cycle. Detection is intra-module only, so no cross-file guess is made."
+references = ["https://www.typescriptlang.org/docs/handbook/2/objects.html#extending-types"]
+tags = ["correctness", "typescript", "semantic", "types"]
+
+[[bad_examples]]
+code = "interface A extends B {}\ninterface B extends A {} // A and B recursively extend each other"
+note = "Mutual `extends` heritage is a TS2310 error."
+
+[[bad_examples]]
+code = "interface Loop extends Loop {} // extends itself"
+note = "Self-extends is a one-interface cycle."
+
+[[good_examples]]
+code = "interface A { b: B }\ninterface B { a: A } // mutual member references are legal recursion"
+note = "Member-annotation cycles type-check fine and are not flagged."
+
+[[good_examples]]
+code = "interface Base {}\ninterface A extends Base {}\ninterface B extends Base {}"
+note = "A shared base with no cycle is fine."

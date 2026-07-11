@@ -23,7 +23,13 @@ use crate::fingerprint::{hash_bytes, FileFingerprint};
 /// v6: lowering now populates `FunctionData.returns_jsx` (always `false`
 ///     in v5). Bumped so a v5 cache — whose IR carries the old value —
 ///     cannot serve stale React-component classifications on a warm run.
-pub const CACHE_FORMAT_VERSION: u32 = 6;
+/// v7: lowering now populates `Call.in_symbol` (always `None` in v6),
+///     resolving each call to its enclosing top-level function for the
+///     call graph. A v6 cache carries the old `None`, so discard it.
+/// v8: lowering now populates `Module.references` (always empty in v7) and
+///     interface `extends`/type-node data. A v7 cache lacks these, so the
+///     unreachable-symbol and type rules would see stale IR — discard it.
+pub const CACHE_FORMAT_VERSION: u32 = 8;
 
 /// Directory (under the project root) holding cache state.
 pub const CACHE_DIR: &str = ".snowbros";

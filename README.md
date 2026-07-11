@@ -205,12 +205,21 @@ The binary installs as both `snowbros` and the short alias `sb`.
 | `next/server-only-in-client` | High | Certain |
 | `next/private-env-in-client` | High | Likely |
 | `graph/no-circular-imports` | High | Certain |
+| `typescript/circular-type-reference` | High | Certain |
 | `imports/unresolved-import` | Medium | Likely |
+| `imports/broken-path-alias` | Medium | Likely |
 | `next/forced-dynamic` | Info | Certain |
 | `deps/unused-dependency` | Low | Likely |
 | `env/unused-env-var` | Low | Possible |
 | `exports/unused-export` | Low | Possible |
+| `typescript/unreachable-symbol` | Low | Likely |
 | `graph/dead-file` | Low | Possible |
+
+A representative slice of the 22 built-in rules; run `sb explain <rule-id>`
+for any one. TypeScript rules resolve over a semantic symbol model — a
+cross-file call graph and type-level IR — not just per-file facts. Inspect
+that model with `sb graph --symbols` (declaration kinds, `Calls`, and
+`TypeRef` inheritance edges) or `sb model`.
 
 Run `sb explain <rule-id>` for detection logic, false-positive guards, and
 fix guidance. Accuracy beats quantity: anything the resolver cannot prove is

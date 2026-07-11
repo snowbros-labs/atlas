@@ -31,4 +31,7 @@ pub mod id;
 pub mod node;
 
 pub use id::{ModuleId, SymbolId};
-pub use node::{Call, ClassData, FunctionData, Import, Module, Reference, Symbol, SymbolKind};
+pub use node::{
+    Call, ClassData, EnumData, FunctionData, Import, InterfaceData, Module, Reference, Symbol,
+    SymbolKind, TypeAliasData,
+};

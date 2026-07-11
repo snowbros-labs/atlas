@@ -1,0 +1,20 @@
+id = "imports/broken-path-alias"
+title = "Broken path alias"
+category = "imports"
+severity = "medium"
+confidence = "likely"
+maturity = "preview"
+description = "Detects an import specifier that matches a configured tsconfig `paths` alias but resolves to no file after the alias is expanded."
+rationale = "When an alias is configured (e.g. `@/*` → `src/*`) the intent is explicit, so a specifier that expands under it yet points at nothing is almost always a typo or a moved/deleted target — a runtime failure waiting to happen, distinct from an ordinary missing module."
+recommendation = "Fix the specifier to match an existing file, update the `paths` mapping in tsconfig, or restore the moved target."
+false_positives = "Only specifiers that actually match a configured alias pattern are considered — plain relative and bare-package imports are handled by `imports/unresolved-import` and dependency rules instead. A target generated at build time (rare for aliased source paths) would be reported; confidence is Likely, not Certain, for that reason."
+references = ["https://www.typescriptlang.org/tsconfig#paths"]
+tags = ["correctness", "imports", "tsconfig"]
+
+[[bad_examples]]
+code = "// tsconfig paths: { \"@/*\": [\"src/*\"] }\nimport { thing } from \"@/moevd/thing\" // typo: 'moevd'"
+note = "The alias expands but `src/moevd/thing` does not exist."
+
+[[good_examples]]
+code = "// tsconfig paths: { \"@/*\": [\"src/*\"] }\nimport { thing } from \"@/moved/thing\" // resolves to src/moved/thing.ts"
+note = "The expanded alias points at a real file."

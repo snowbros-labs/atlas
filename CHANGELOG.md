@@ -4,6 +4,49 @@ All notable changes to Snowbros Atlas are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com) and the
 project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.3.0] - 2026-07-11
+
+Atlas' first semantic TypeScript analysis engine. The analyzer moves from
+file-level facts to a resolved, project-wide symbol model over Atlas IR:
+cross-file symbol resolution, a call graph, and type-level nodes, harvested
+into new zero- and low-false-positive diagnostics.
+
+### Features
+
+- **Call graph.** Lowering resolves each call to its enclosing top-level
+  function (`Call.in_symbol`); the semantic layer builds caller → callee
+  edges, intra-file and across files (via named imports). Member calls and
+  aliased/default imports are left unresolved by design — accuracy over
+  quantity.
+- **TypeScript type IR.** Interfaces, type aliases, and enums are lowered as
+  first-class symbols, with interface members, `extends` heritage (kept
+  separate from member type references), and enum members.
+- **Reference tracking.** Lowering records identifier/type uses, powering
+  reachability analysis without false positives from callback/value uses.
+- **Three new rules:**
+  - `typescript/circular-type-reference` (High/Certain) — a cycle of
+    interfaces connected by `extends` heritage; a guaranteed TS2310 error,
+    so zero false positives. Member-annotation recursion is legal and never
+    flagged.
+  - `typescript/unreachable-symbol` (Low/Likely) — a non-exported top-level
+    declaration referenced nowhere in its module; provably dead code.
+  - `imports/broken-path-alias` (Medium/Likely) — a specifier that matches a
+    configured tsconfig `paths` alias but resolves to no file (a typo or
+    moved target), distinct from an ordinary missing module.
+- **Richer symbol graph.** `sb graph --symbols` now renders the full
+  semantic surface — declaration kinds plus `Contains` / `Exports` / `Calls`
+  (intra- and cross-file) / `TypeRef` (interface inheritance) edges — a
+  tangible way to inspect the engine.
+
+### Internal
+
+- Cache format bumped to v8: v6/v7 caches carry IR without `Call.in_symbol`,
+  `Module.references`, or the type-node data and are cleanly discarded.
+- The existing eleven rules read the file-level rule graph, not the symbol
+  graph, so every prior diagnostic and all five output formats remain
+  byte-identical. Verified on a real Next.js/TypeScript codebase: the three
+  new rules produced zero false positives.
+
 ## [0.2.2] - 2026-07-07
 
 ### Bug Fixes
