@@ -217,10 +217,15 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                             graph.add_edge(from_id, pkg_id, EdgeKind::DependsOn);
                         }
                         Resolution::Unresolved(specifier) => {
+                            // A specifier that expands under a tsconfig alias
+                            // yet resolves nowhere is a broken alias, not a
+                            // plain missing module.
+                            let matched_alias = !aliases.expand(&specifier).is_empty();
                             unresolved.push(UnresolvedImport {
                                 file: path.clone(),
                                 specifier: specifier.clone(),
                                 span: import.span,
+                                matched_alias,
                             });
                         }
                     }

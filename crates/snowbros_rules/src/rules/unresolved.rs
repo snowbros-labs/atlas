@@ -52,6 +52,49 @@ impl Rule for UnresolvedImports {
     }
 }
 
+/// `imports/broken-path-alias` — a specifier that matches a configured
+/// tsconfig `paths` alias but resolves to no file.
+///
+/// Distinct from `imports/unresolved-import` (which covers only relative
+/// specifiers): here the alias itself *is* configured — the expansion just
+/// points nowhere, which means a typo in the specifier or a moved/deleted
+/// target. The pipeline flags these via `UnresolvedImport::matched_alias`,
+/// so the rule needs no tsconfig knowledge of its own.
+pub struct BrokenPathAlias;
+
+impl Rule for BrokenPathAlias {
+    fn id(&self) -> &'static str {
+        "imports/broken-path-alias"
+    }
+
+    fn run(&self, ctx: &AnalysisContext<'_>) -> Vec<Diagnostic> {
+        ctx.unresolved_imports
+            .iter()
+            .filter(|u| u.matched_alias)
+            .map(|u| {
+                Diagnostic::new(
+                    self.id(),
+                    "Broken path alias",
+                    format!(
+                        "`{}` matches a tsconfig `paths` alias but resolves to no \
+                         file. The alias target is likely a typo or points at a \
+                         moved or deleted module.",
+                        u.specifier
+                    ),
+                    "imports",
+                    Severity::Medium,
+                    Confidence::Likely,
+                    SourceLocation::new(u.file.clone(), u.span),
+                )
+                .with_evidence(Evidence::note(format!(
+                    "alias `{}` expanded via tsconfig `paths` but no target file exists",
+                    u.specifier
+                )))
+            })
+            .collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -71,11 +114,13 @@ mod tests {
                 file: "src/app.ts".into(),
                 specifier: "./missing".into(),
                 span: span(),
+                matched_alias: false,
             },
             UnresolvedImport {
                 file: "src/app.ts".into(),
                 specifier: "@/unknown-alias".into(),
                 span: span(),
+                matched_alias: false,
             },
         ];
         let ctx = AnalysisContext::new(
@@ -91,6 +136,42 @@ mod tests {
         assert!(diags[0].message.contains("`./missing`"));
         assert_eq!(diags[0].location.span.start.line, 3);
         assert_eq!(diags[0].confidence, Confidence::Likely);
+    }
+
+    #[test]
+    fn broken_alias_reported_only_for_matched_alias() {
+        let g = SemanticGraph::new();
+        let unresolved = vec![
+            UnresolvedImport {
+                file: "src/app.ts".into(),
+                specifier: "@/moved/thing".into(),
+                span: span(),
+                matched_alias: true,
+            },
+            UnresolvedImport {
+                file: "src/app.ts".into(),
+                specifier: "./missing".into(),
+                span: span(),
+                matched_alias: false,
+            },
+        ];
+        let ctx = AnalysisContext::new(
+            &g,
+            Default::default(),
+            crate::context::ContextInputs {
+                unresolved_imports: &unresolved,
+                ..Default::default()
+            },
+        );
+        // Broken-alias fires only on the alias; the relative one is the
+        // unresolved-import rule's job.
+        let alias = BrokenPathAlias.run(&ctx);
+        assert_eq!(alias.len(), 1);
+        assert!(alias[0].message.contains("`@/moved/thing`"));
+        // And the generic rule fires only on the relative one.
+        let rel = UnresolvedImports.run(&ctx);
+        assert_eq!(rel.len(), 1);
+        assert!(rel[0].message.contains("`./missing`"));
     }
 
     #[test]

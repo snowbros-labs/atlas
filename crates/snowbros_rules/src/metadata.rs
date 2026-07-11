@@ -83,6 +83,7 @@ const METADATA_SOURCES: &[&str] = &[
     include_str!("../rules/architecture/unused-export.toml"),
     include_str!("../rules/dependencies/unused-dependency.toml"),
     include_str!("../rules/environment/unused-env-var.toml"),
+    include_str!("../rules/imports/broken-path-alias.toml"),
     include_str!("../rules/imports/unresolved-import.toml"),
     include_str!("../rules/nextjs/client-metadata-ignored.toml"),
     include_str!("../rules/nextjs/mixed-router.toml"),
