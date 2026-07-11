@@ -4,6 +4,16 @@ All notable changes to the Snowbros Atlas VS Code extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.3.0]
+
+### Changed
+
+- Tracks Atlas CLI 0.3.0 — the first semantic TypeScript engine. New
+  diagnostics surface automatically through the existing language server
+  (per-file `publishDiagnostics`): `typescript/circular-type-reference`,
+  `typescript/unreachable-symbol`, and `imports/broken-path-alias`. No
+  extension changes were required — the LSP and report schemas are unchanged.
+
 ## [0.2.2]
 
 ### Fixed
