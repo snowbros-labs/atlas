@@ -239,6 +239,41 @@ impl SemanticModel {
         out
     }
 
+    /// Non-exported top-level declarations that are never referenced within
+    /// their own module — provably dead within the project.
+    ///
+    /// A candidate must be a *declaration* kind (function, class, interface,
+    /// type alias, or enum — not a plain binding, whose initializer may run
+    /// for side effects) that is not exported (an export could be public
+    /// API) and whose name appears in no [`ir::Reference`] in the module.
+    /// Reference collection over-approximates uses, so a symbol reaching this
+    /// list is genuinely unused: nothing in the module names it and, being
+    /// unexported, nothing outside can either. Recursive self-use counts as
+    /// a reference, so a self-recursive-but-otherwise-dead function is not
+    /// flagged (a safe miss). Sorted by (module, source order).
+    ///
+    /// [`ir::Reference`]: snowbros_ir::Reference
+    pub fn unreachable_symbols(&self) -> Vec<SymbolRef<'_>> {
+        let mut out = Vec::new();
+        for (path, module) in &self.modules {
+            let referenced: std::collections::BTreeSet<&str> =
+                module.references.iter().map(|r| r.name.as_str()).collect();
+            for symbol in &module.symbols {
+                if symbol.exported || !is_declaration_kind(&symbol.kind) {
+                    continue;
+                }
+                if referenced.contains(symbol.name.as_str()) {
+                    continue;
+                }
+                out.push(SymbolRef {
+                    module: path,
+                    symbol,
+                });
+            }
+        }
+        out
+    }
+
     /// The first exported symbol named `name` in `module`, if any — the
     /// resolution target for a cross-file reference to `name`.
     pub fn exported_symbol(&self, module: impl AsRef<Utf8Path>, name: &str) -> Option<SymbolId> {
@@ -353,6 +388,21 @@ impl SemanticModel {
 /// the builder because their local name cannot be matched to a callee
 /// safely.
 pub type ImportedNames = BTreeMap<Utf8PathBuf, BTreeMap<String, Utf8PathBuf>>;
+
+/// Whether a symbol kind is a *declaration* whose disuse means dead code —
+/// a function, class, or type declaration. Plain `const`/`let`/`var`
+/// bindings are excluded: their initializer may run for side effects, so an
+/// unreferenced binding is not necessarily dead.
+fn is_declaration_kind(kind: &SymbolKind) -> bool {
+    matches!(
+        kind,
+        SymbolKind::Function(_)
+            | SymbolKind::Class(_)
+            | SymbolKind::Interface(_)
+            | SymbolKind::TypeAlias(_)
+            | SymbolKind::Enum(_)
+    )
+}
 
 /// Tarjan's strongly-connected-components over a string-keyed graph.
 ///
@@ -795,6 +845,31 @@ mod tests {
             ],
         )]);
         assert!(model.circular_type_references().is_empty());
+    }
+
+    #[test]
+    fn unreachable_symbols_detected_via_references() {
+        use snowbros_ir::Reference;
+        let mut m = module(
+            "a.ts",
+            vec![
+                func("used", false, 0, (10, 90)),
+                func("dead", false, 100, (110, 120)),
+                func("api", true, 200, (210, 220)), // exported → skip
+            ],
+        );
+        // `used` is referenced somewhere; `dead` and `api` are not.
+        m.references.push(Reference {
+            name: "used".to_string(),
+            span: span(300, 304),
+        });
+        let model = SemanticModel::from_modules([m]);
+        let dead: Vec<&str> = model
+            .unreachable_symbols()
+            .iter()
+            .map(|s| s.symbol.name.as_str())
+            .collect();
+        assert_eq!(dead, vec!["dead"]);
     }
 
     #[test]

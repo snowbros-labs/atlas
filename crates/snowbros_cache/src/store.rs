@@ -26,7 +26,10 @@ use crate::fingerprint::{hash_bytes, FileFingerprint};
 /// v7: lowering now populates `Call.in_symbol` (always `None` in v6),
 ///     resolving each call to its enclosing top-level function for the
 ///     call graph. A v6 cache carries the old `None`, so discard it.
-pub const CACHE_FORMAT_VERSION: u32 = 7;
+/// v8: lowering now populates `Module.references` (always empty in v7) and
+///     interface `extends`/type-node data. A v7 cache lacks these, so the
+///     unreachable-symbol and type rules would see stale IR — discard it.
+pub const CACHE_FORMAT_VERSION: u32 = 8;
 
 /// Directory (under the project root) holding cache state.
 pub const CACHE_DIR: &str = ".snowbros";

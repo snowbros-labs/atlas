@@ -75,7 +75,52 @@ pub fn lower(parsed: &ParsedFile, path: impl Into<Utf8PathBuf>) -> Module {
     collect_calls(root, parsed, &mut module.calls);
     resolve_call_enclosure(&mut module);
 
+    // References: every identifier/type-identifier *use* in the module,
+    // excluding the top-level declaration names themselves. This is the
+    // reachability signal for `typescript/unreachable-symbol`: a top-level
+    // symbol whose name never appears here is unused within the module.
+    // Deliberately an over-approximation (a coincidental same-named nested
+    // binding still counts as a use), so the rule can never flag a symbol
+    // that is genuinely referenced.
+    let decl_name_spans: std::collections::BTreeSet<(u32, u32)> = module
+        .symbols
+        .iter()
+        .map(|s| (s.span.start_byte, s.span.end_byte))
+        .collect();
+    collect_references(root, parsed, &decl_name_spans, &mut module.references);
+
     module
+}
+
+/// Collects identifier/type-identifier *uses* into [`Reference`]s, skipping
+/// the nodes that are top-level declaration names (`decl_name_spans`).
+///
+/// Node kinds gathered: `identifier` (value uses, JSX components, `new`
+/// targets), `type_identifier` (type annotations, heritage), and
+/// `shorthand_property_identifier` (`{ foo }` shorthand). `property_identifier`
+/// is excluded on purpose — `obj.foo` never refers to a top-level `foo`.
+fn collect_references(
+    node: Node<'_>,
+    parsed: &ParsedFile,
+    decl_name_spans: &std::collections::BTreeSet<(u32, u32)>,
+    out: &mut Vec<snowbros_ir::Reference>,
+) {
+    match node.kind() {
+        "identifier" | "type_identifier" | "shorthand_property_identifier" => {
+            let span = span_of(node);
+            if !decl_name_spans.contains(&(span.start_byte, span.end_byte)) {
+                out.push(snowbros_ir::Reference {
+                    name: parsed.text_of(node).to_string(),
+                    span,
+                });
+            }
+        }
+        _ => {}
+    }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_references(child, parsed, decl_name_spans, out);
+    }
 }
 
 /// Assigns each call its enclosing top-level function symbol (the caller
@@ -903,6 +948,34 @@ export default class D { m() {} }
             SymbolKind::Enum(d) => assert_eq!(d.members, vec!["Red", "Green", "Blue"]),
             other => panic!("expected enum, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn references_capture_uses_not_declarations() {
+        let m = lower_src(
+            r#"
+function helper() {}
+export function run() { helper(); }
+"#,
+            Language::TypeScript,
+            "a.ts",
+        );
+        let ref_names: Vec<&str> = m.references.iter().map(|r| r.name.as_str()).collect();
+        // `helper` is used inside `run` → a reference; declaration names are
+        // excluded, so `run`/`helper` declaration sites are not counted.
+        assert!(ref_names.contains(&"helper"));
+        assert!(!ref_names.contains(&"run"));
+    }
+
+    #[test]
+    fn unused_private_symbol_has_no_reference() {
+        let m = lower_src(
+            "function orphan() {}\nexport function used() {}\n",
+            Language::TypeScript,
+            "a.ts",
+        );
+        let ref_names: Vec<&str> = m.references.iter().map(|r| r.name.as_str()).collect();
+        assert!(!ref_names.contains(&"orphan"));
     }
 
     #[test]

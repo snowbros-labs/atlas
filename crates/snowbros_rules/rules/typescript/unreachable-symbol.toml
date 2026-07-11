@@ -1,0 +1,24 @@
+id = "typescript/unreachable-symbol"
+title = "Unreachable symbol"
+category = "typescript"
+severity = "low"
+confidence = "likely"
+maturity = "preview"
+description = "Detects a non-exported top-level declaration (function, class, interface, type, or enum) that is never referenced anywhere in its module, resolved over the Atlas IR symbol model."
+rationale = "A private declaration that nothing in the module names — and that cannot be reached from outside because it is not exported — is dead code. It inflates the file, misleads readers, and hides intent."
+recommendation = "Delete the declaration, or export it if it is meant to be part of the module's public API."
+false_positives = "Reference detection over-approximates uses (any identifier/type occurrence of the name counts), so a referenced symbol is never flagged. A self-recursive function that is otherwise unused is not flagged (its self-call counts as a use). The only residual gap is a symbol reached solely by dynamic string access (`obj['name']`), which is unanalyzable and vanishingly rare; such code is already opaque to static analysis."
+references = []
+tags = ["dead-code", "typescript", "semantic"]
+
+[[bad_examples]]
+code = "function orphan() {}\nexport function used() { used() }"
+note = "`orphan` is never referenced and not exported — dead code."
+
+[[good_examples]]
+code = "function helper() {}\nexport function run() { helper() }"
+note = "`helper` is referenced by `run`, so it is live."
+
+[[good_examples]]
+code = "export function api() {}"
+note = "Exported declarations may be public API and are never flagged."

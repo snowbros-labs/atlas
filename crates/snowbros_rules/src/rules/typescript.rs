@@ -208,6 +208,56 @@ impl Rule for CircularTypeReference {
     }
 }
 
+/// `typescript/unreachable-symbol` — a non-exported top-level declaration
+/// that no code in its module references.
+///
+/// Provably dead: reference detection over-approximates uses, so a flagged
+/// symbol is named nowhere in its module and, being unexported, is
+/// unreachable from outside. Entry/config/declaration files are excluded.
+pub struct UnreachableSymbol;
+
+impl Rule for UnreachableSymbol {
+    fn id(&self) -> &'static str {
+        "typescript/unreachable-symbol"
+    }
+
+    fn run(&self, ctx: &AnalysisContext<'_>) -> Vec<Diagnostic> {
+        let Some(model) = ctx.semantic else {
+            return Vec::new();
+        };
+
+        let mut diagnostics = Vec::new();
+        for sym in model.unreachable_symbols() {
+            let path = sym.module;
+            if is_excluded(path.as_str()) {
+                continue;
+            }
+            let kind = sym.symbol.kind.tag();
+            diagnostics.push(
+                Diagnostic::new(
+                    self.id(),
+                    "Unreachable symbol",
+                    format!(
+                        "{kind} `{}` in `{path}` is never referenced and is not \
+                         exported — it is dead code. Remove it, or export it if it \
+                         is meant to be public.",
+                        sym.symbol.name
+                    ),
+                    "typescript",
+                    Severity::Low,
+                    Confidence::Likely,
+                    SourceLocation::new(path.to_owned(), sym.symbol.span),
+                )
+                .with_evidence(Evidence::note(format!(
+                    "symbol `{}` has no reference in its module",
+                    sym.id()
+                ))),
+            );
+        }
+        diagnostics
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -321,6 +371,31 @@ mod tests {
     }
 
     #[test]
+    fn unreachable_symbol_reported() {
+        let m = model(&[(
+            "src/util.ts",
+            "function orphan() {}\nexport function used() { used() }\n",
+        )]);
+        let g = SemanticGraph::new();
+        let diags = UnreachableSymbol.run(&ctx(&g, &m, &[]));
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("`orphan`"));
+        assert!(diags[0].evidence[0]
+            .description
+            .contains("#function#orphan"));
+    }
+
+    #[test]
+    fn referenced_private_symbol_is_live() {
+        let m = model(&[(
+            "src/util.ts",
+            "function helper() {}\nexport function run() { helper() }\n",
+        )]);
+        let g = SemanticGraph::new();
+        assert!(UnreachableSymbol.run(&ctx(&g, &m, &[])).is_empty());
+    }
+
+    #[test]
     fn no_semantic_model_is_no_findings() {
         let g = SemanticGraph::new();
         let ctx = AnalysisContext::new(
@@ -331,5 +406,6 @@ mod tests {
         assert!(UnusedExport.run(&ctx).is_empty());
         assert!(DuplicateDeclaration.run(&ctx).is_empty());
         assert!(CircularTypeReference.run(&ctx).is_empty());
+        assert!(UnreachableSymbol.run(&ctx).is_empty());
     }
 }
