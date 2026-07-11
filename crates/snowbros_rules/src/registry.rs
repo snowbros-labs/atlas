@@ -34,6 +34,7 @@ pub fn builtin_rules() -> Vec<Box<dyn Rule>> {
         Box::new(rules::react::ComponentNaming),
         Box::new(rules::react::HookInNonComponent),
         Box::new(rules::react::HookReturnsJsx),
+        Box::new(rules::typescript::CircularTypeReference),
         Box::new(rules::typescript::DuplicateDeclaration),
         Box::new(rules::typescript::UnusedExport),
         Box::new(rules::unresolved::UnresolvedImports),

@@ -38,6 +38,21 @@ pub struct Duplicate {
     pub spans: Vec<Span>,
 }
 
+/// A cycle of interfaces connected by `extends` heritage, within one module.
+///
+/// Such a cycle is always a TypeScript error (TS2310, "recursively
+/// references itself as a base type"), so flagging it yields no false
+/// positives. Member-annotation type cycles are legal and are *not*
+/// represented here.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeCycle {
+    /// Module the cycle occurs in.
+    pub module: Utf8PathBuf,
+    /// The interfaces in the cycle, each `(name, declaration span)`, sorted
+    /// by name for deterministic reporting.
+    pub members: Vec<(String, Span)>,
+}
+
 /// A project-wide index of declared symbols, built from lowered IR.
 ///
 /// Modules are keyed by path in a [`BTreeMap`] so every traversal is
@@ -161,6 +176,69 @@ impl SemanticModel {
         out
     }
 
+    /// Cycles of interfaces connected by `extends` heritage, per module.
+    ///
+    /// Detection is intra-module: heritage is matched only to interfaces
+    /// declared in the *same* file (cross-file type resolution is a later
+    /// milestone), so no cross-file guess is made. Same-name interface
+    /// declarations merge, and their `extends` lists union. A self-extends
+    /// (`interface A extends A`) is a one-member cycle. Results are sorted
+    /// by (module, first member name); members are sorted by name.
+    pub fn circular_type_references(&self) -> Vec<TypeCycle> {
+        let mut out = Vec::new();
+        for (path, module) in &self.modules {
+            // Interface name → (first span, unioned extends targets). Only
+            // interfaces are nodes; merging same-name decls is TS-faithful.
+            let mut span_of: BTreeMap<&str, Span> = BTreeMap::new();
+            let mut edges: BTreeMap<&str, std::collections::BTreeSet<&str>> = BTreeMap::new();
+            for symbol in &module.symbols {
+                if let SymbolKind::Interface(data) = &symbol.kind {
+                    span_of.entry(&symbol.name).or_insert(symbol.span);
+                    let set = edges.entry(&symbol.name).or_default();
+                    for target in &data.extends {
+                        set.insert(target.as_str());
+                    }
+                }
+            }
+            // Restrict edges to targets that are interfaces in this module.
+            let nodes: Vec<&str> = span_of.keys().copied().collect();
+            let adj: BTreeMap<&str, Vec<&str>> = nodes
+                .iter()
+                .map(|&n| {
+                    let mut targets: Vec<&str> = edges
+                        .get(n)
+                        .into_iter()
+                        .flatten()
+                        .copied()
+                        .filter(|t| span_of.contains_key(t))
+                        .collect();
+                    targets.sort_unstable();
+                    (n, targets)
+                })
+                .collect();
+
+            for scc in tarjan_scc(&nodes, &adj) {
+                let is_cycle = scc.len() > 1 || (scc.len() == 1 && adj[scc[0]].contains(&scc[0]));
+                if !is_cycle {
+                    continue;
+                }
+                let mut members: Vec<(String, Span)> =
+                    scc.iter().map(|&n| (n.to_string(), span_of[n])).collect();
+                members.sort_by(|a, b| a.0.cmp(&b.0));
+                out.push(TypeCycle {
+                    module: path.clone(),
+                    members,
+                });
+            }
+        }
+        out.sort_by(|a, b| {
+            a.module
+                .cmp(&b.module)
+                .then_with(|| a.members[0].0.cmp(&b.members[0].0))
+        });
+        out
+    }
+
     /// The first exported symbol named `name` in `module`, if any — the
     /// resolution target for a cross-file reference to `name`.
     pub fn exported_symbol(&self, module: impl AsRef<Utf8Path>, name: &str) -> Option<SymbolId> {
@@ -275,6 +353,70 @@ impl SemanticModel {
 /// the builder because their local name cannot be matched to a callee
 /// safely.
 pub type ImportedNames = BTreeMap<Utf8PathBuf, BTreeMap<String, Utf8PathBuf>>;
+
+/// Tarjan's strongly-connected-components over a string-keyed graph.
+///
+/// `nodes` is iterated in the given order (callers pass a sorted list) and
+/// each adjacency list is likewise pre-sorted, so the returned components —
+/// and the order of nodes within them — are deterministic.
+fn tarjan_scc<'a>(nodes: &[&'a str], adj: &BTreeMap<&'a str, Vec<&'a str>>) -> Vec<Vec<&'a str>> {
+    struct State<'a, 'b> {
+        adj: &'b BTreeMap<&'a str, Vec<&'a str>>,
+        index: BTreeMap<&'a str, usize>,
+        low: BTreeMap<&'a str, usize>,
+        on_stack: std::collections::BTreeSet<&'a str>,
+        stack: Vec<&'a str>,
+        next: usize,
+        out: Vec<Vec<&'a str>>,
+    }
+    fn strong<'a>(v: &'a str, st: &mut State<'a, '_>) {
+        st.index.insert(v, st.next);
+        st.low.insert(v, st.next);
+        st.next += 1;
+        st.stack.push(v);
+        st.on_stack.insert(v);
+        if let Some(succ) = st.adj.get(v) {
+            for &w in succ {
+                if !st.index.contains_key(w) {
+                    strong(w, st);
+                    let lw = st.low[w];
+                    let lv = st.low[v];
+                    st.low.insert(v, lv.min(lw));
+                } else if st.on_stack.contains(w) {
+                    let iw = st.index[w];
+                    let lv = st.low[v];
+                    st.low.insert(v, lv.min(iw));
+                }
+            }
+        }
+        if st.low[v] == st.index[v] {
+            let mut component = Vec::new();
+            while let Some(w) = st.stack.pop() {
+                st.on_stack.remove(w);
+                component.push(w);
+                if w == v {
+                    break;
+                }
+            }
+            st.out.push(component);
+        }
+    }
+    let mut st = State {
+        adj,
+        index: BTreeMap::new(),
+        low: BTreeMap::new(),
+        on_stack: std::collections::BTreeSet::new(),
+        stack: Vec::new(),
+        next: 0,
+        out: Vec::new(),
+    };
+    for &n in nodes {
+        if !st.index.contains_key(n) {
+            strong(n, &mut st);
+        }
+    }
+    st.out
+}
 
 /// The graph node label for a symbol id.
 ///
@@ -598,6 +740,61 @@ mod tests {
         assert_eq!(edges.len(), 1);
         // Resolves to the LOCAL helper, not util's.
         assert_eq!(edges[0].1.as_str(), "consumer.ts#function#helper@100-101");
+    }
+
+    fn iface(name: &str, extends: &[&str], at: u32) -> Symbol {
+        use snowbros_ir::InterfaceData;
+        Symbol {
+            name: name.to_string(),
+            kind: SymbolKind::Interface(InterfaceData {
+                members: Vec::new(),
+                extends: extends.iter().map(|s| s.to_string()).collect(),
+                type_refs: Vec::new(),
+            }),
+            span: span(at, at + 1),
+            exported: false,
+        }
+    }
+
+    #[test]
+    fn detects_mutual_interface_extends_cycle() {
+        let model = SemanticModel::from_modules([module(
+            "a.ts",
+            vec![
+                iface("A", &["B"], 0),
+                iface("B", &["A"], 10),
+                iface("C", &["A"], 20), // C→A is not a cycle (A does not reach C)
+            ],
+        )]);
+        let cycles = model.circular_type_references();
+        assert_eq!(cycles.len(), 1);
+        assert_eq!(cycles[0].module, "a.ts");
+        let names: Vec<&str> = cycles[0].members.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(names, vec!["A", "B"]);
+    }
+
+    #[test]
+    fn detects_self_extends_cycle() {
+        let model =
+            SemanticModel::from_modules([module("a.ts", vec![iface("Loop", &["Loop"], 0)])]);
+        let cycles = model.circular_type_references();
+        assert_eq!(cycles.len(), 1);
+        assert_eq!(cycles[0].members.len(), 1);
+        assert_eq!(cycles[0].members[0].0, "Loop");
+    }
+
+    #[test]
+    fn acyclic_and_external_heritage_are_clean() {
+        // A→B linear (no cycle); D extends an interface not in this module.
+        let model = SemanticModel::from_modules([module(
+            "a.ts",
+            vec![
+                iface("A", &["B"], 0),
+                iface("B", &[], 10),
+                iface("D", &["Elsewhere"], 20),
+            ],
+        )]);
+        assert!(model.circular_type_references().is_empty());
     }
 
     #[test]

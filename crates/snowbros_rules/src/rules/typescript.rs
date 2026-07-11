@@ -155,6 +155,59 @@ impl Rule for DuplicateDeclaration {
     }
 }
 
+/// `typescript/circular-type-reference` — a cycle of interfaces connected
+/// by `extends` heritage within a module.
+///
+/// Such a cycle is a TypeScript error (TS2310), so the rule is
+/// zero-false-positive by construction: only heritage is followed (member
+/// references are legal recursion and ignored), generic arguments are
+/// excluded from heritage, and detection is intra-module.
+pub struct CircularTypeReference;
+
+impl Rule for CircularTypeReference {
+    fn id(&self) -> &'static str {
+        "typescript/circular-type-reference"
+    }
+
+    fn run(&self, ctx: &AnalysisContext<'_>) -> Vec<Diagnostic> {
+        let Some(model) = ctx.semantic else {
+            return Vec::new();
+        };
+
+        let mut diagnostics = Vec::new();
+        for cycle in model.circular_type_references() {
+            // Anchor at the first member (members are name-sorted).
+            let (first_name, first_span) = &cycle.members[0];
+            let names: Vec<&str> = cycle.members.iter().map(|(n, _)| n.as_str()).collect();
+            let chain = if cycle.members.len() == 1 {
+                format!("`{first_name}` extends itself")
+            } else {
+                format!("`{}` extend each other", names.join("` ↔ `"))
+            };
+            diagnostics.push(
+                Diagnostic::new(
+                    self.id(),
+                    "Circular type reference",
+                    format!(
+                        "Interface heritage cycle in `{}`: {chain}. A type that \
+                         recursively extends itself is a TypeScript error (TS2310).",
+                        cycle.module
+                    ),
+                    "typescript",
+                    Severity::High,
+                    Confidence::Certain,
+                    SourceLocation::new(cycle.module.clone(), *first_span),
+                )
+                .with_evidence(Evidence::note(format!(
+                    "`extends` cycle: {}",
+                    names.join(" → ")
+                ))),
+            );
+        }
+        diagnostics
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,6 +296,31 @@ mod tests {
     }
 
     #[test]
+    fn circular_type_reference_reported() {
+        let m = model(&[(
+            "src/types.ts",
+            "interface A extends B {}\ninterface B extends A {}\n",
+        )]);
+        let g = SemanticGraph::new();
+        let diags = CircularTypeReference.run(&ctx(&g, &m, &[]));
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("`A`"));
+        assert!(diags[0].message.contains("`B`"));
+        assert!(diags[0].evidence[0].description.contains("A → B"));
+    }
+
+    #[test]
+    fn legal_member_recursion_not_flagged() {
+        // Mutual member references type-check — must not fire.
+        let m = model(&[(
+            "src/types.ts",
+            "interface A { b: B }\ninterface B { a: A }\n",
+        )]);
+        let g = SemanticGraph::new();
+        assert!(CircularTypeReference.run(&ctx(&g, &m, &[])).is_empty());
+    }
+
+    #[test]
     fn no_semantic_model_is_no_findings() {
         let g = SemanticGraph::new();
         let ctx = AnalysisContext::new(
@@ -252,5 +330,6 @@ mod tests {
         );
         assert!(UnusedExport.run(&ctx).is_empty());
         assert!(DuplicateDeclaration.run(&ctx).is_empty());
+        assert!(CircularTypeReference.run(&ctx).is_empty());
     }
 }

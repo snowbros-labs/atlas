@@ -440,8 +440,9 @@ fn interface_data(node: Node<'_>, parsed: &ParsedFile) -> InterfaceData {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         match child.kind() {
-            // Heritage: `extends A, B` — kept separate from member refs.
-            "extends_type_clause" => collect_type_refs(child, parsed, &mut extends),
+            // Heritage: `extends A, B` — only the *base* type names, not
+            // their generic arguments (`extends B<A>` extends B, not A).
+            "extends_type_clause" => collect_heritage_names(child, parsed, &mut extends),
             "interface_body" | "object_type" => {
                 let mut bc = child.walk();
                 for member in child.children(&mut bc) {
@@ -484,6 +485,30 @@ fn enum_data(node: Node<'_>, parsed: &ParsedFile) -> EnumData {
         }
     }
     EnumData { members }
+}
+
+/// Collects the *base* type names of an `extends_type_clause`, excluding
+/// generic arguments. `extends B<A>` yields `B` only — `A` there is a type
+/// argument, not a base type, so treating it as heritage would fabricate a
+/// cycle. Each heritage entry is either a bare `type_identifier` or a
+/// `generic_type` whose `name` field is the base.
+fn collect_heritage_names(clause: Node<'_>, parsed: &ParsedFile, out: &mut Vec<String>) {
+    let mut cursor = clause.walk();
+    for child in clause.children(&mut cursor) {
+        match child.kind() {
+            "type_identifier" => out.push(parsed.text_of(child).to_string()),
+            "generic_type" => {
+                if let Some(name) = child.child_by_field_name("name") {
+                    // The base may itself be nested (e.g. `A.B`); take the
+                    // trailing type_identifier of the name node.
+                    if name.kind() == "type_identifier" {
+                        out.push(parsed.text_of(name).to_string());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 /// Depth-first collection of referenced type names (`type_identifier`
@@ -824,6 +849,22 @@ export default class D { m() {} }
                 assert!(d.type_refs.contains(&"Profile".to_string()));
                 assert!(!d.type_refs.contains(&"Base".to_string()));
                 assert!(!d.type_refs.contains(&"User".to_string()));
+            }
+            other => panic!("expected interface, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn heritage_excludes_generic_arguments() {
+        let m = lower_src(
+            "interface A extends B<A>, C {}",
+            Language::TypeScript,
+            "a.ts",
+        );
+        match &m.symbols[0].kind {
+            SymbolKind::Interface(d) => {
+                // Base types only — `A` as a type argument is not heritage.
+                assert_eq!(d.extends, vec!["B", "C"]);
             }
             other => panic!("expected interface, got {other:?}"),
         }

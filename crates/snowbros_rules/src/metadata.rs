@@ -93,6 +93,7 @@ const METADATA_SOURCES: &[&str] = &[
     include_str!("../rules/react/hook-returns-jsx.toml"),
     include_str!("../rules/security/hardcoded-secret.toml"),
     include_str!("../rules/security/no-eval.toml"),
+    include_str!("../rules/typescript/circular-type-reference.toml"),
     include_str!("../rules/typescript/duplicate-declaration.toml"),
     include_str!("../rules/typescript/unused-export.toml"),
 ];
