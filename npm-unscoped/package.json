@@ -1,6 +1,6 @@
 {
   "name": "snowbros",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Deterministic engineering intelligence for JavaScript/TypeScript codebases. Forwarding package for @snowbros/atlas.",
   "license": "MIT OR Apache-2.0",
   "author": "Snowbros Atlas Contributors",
@@ -21,7 +21,7 @@
     "snowbros"
   ],
   "dependencies": {
-    "@snowbros/atlas": "0.2.2"
+    "@snowbros/atlas": "0.3.0"
   },
   "bin": {
     "snowbros": "bin/snowbros.js",
