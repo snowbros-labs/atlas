@@ -16,7 +16,9 @@ pub mod python;
 pub mod treesitter;
 
 pub use facts::{extract_facts, FileFacts, NamedItem, SecretCandidate, SecretSignal};
-pub use frontend::{EcmaScriptFrontend, FrontendRegistry, LanguageFrontend, LoweredFile};
+pub use frontend::{
+    EcmaScriptFrontend, FrontendRegistry, LanguageFrontend, LoweredFile, PythonFrontend,
+};
 pub use imports::{extract_imports, Import, ImportKind};
 pub use language::Language;
 pub use lowering::lower;

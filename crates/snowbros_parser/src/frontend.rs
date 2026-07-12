@@ -17,6 +17,7 @@ use camino::Utf8Path;
 
 use snowbros_ir::Module;
 
+use crate::python::{lower_python, python_facts};
 use crate::{extract_facts, lower, parse, FileFacts, Language, ParseError};
 
 /// The per-file substrate one frontend produces for a single source file:
@@ -104,6 +105,41 @@ impl LanguageFrontend for EcmaScriptFrontend {
     }
 }
 
+/// The frontend for Python.
+///
+/// Lowers Python source into the same Atlas IR the ECMAScript frontend
+/// produces (see [`crate::python`]). Resolution and every shared rule read the
+/// result identically — the point of the frontend abstraction.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct PythonFrontend;
+
+impl LanguageFrontend for PythonFrontend {
+    fn family(&self) -> &'static str {
+        "python"
+    }
+
+    fn handles(&self, language: Language) -> bool {
+        matches!(language, Language::Python)
+    }
+
+    fn lower_file(
+        &self,
+        source: String,
+        language: Language,
+        path: &Utf8Path,
+    ) -> Result<LoweredFile, ParseError> {
+        debug_assert!(
+            self.handles(language),
+            "PythonFrontend given non-python language {language}"
+        );
+        let parsed = parse(source, language)?;
+        Ok(LoweredFile {
+            facts: python_facts(&parsed),
+            ir: lower_python(&parsed, path.to_owned()),
+        })
+    }
+}
+
 /// The set of language frontends available to the engine.
 ///
 /// The registry owns its frontends and resolves a detected [`Language`] to
@@ -140,11 +176,11 @@ impl FrontendRegistry {
 }
 
 impl Default for FrontendRegistry {
-    /// The default registry: every frontend Atlas ships today. Currently the
-    /// JavaScript/TypeScript family via [`EcmaScriptFrontend`]; new languages
-    /// register here as their frontends land.
+    /// The default registry: every frontend Atlas ships today — the
+    /// JavaScript/TypeScript family via [`EcmaScriptFrontend`] and Python via
+    /// [`PythonFrontend`]. New languages register here as their frontends land.
     fn default() -> Self {
-        Self::from_frontends(vec![Box::new(EcmaScriptFrontend)])
+        Self::from_frontends(vec![Box::new(EcmaScriptFrontend), Box::new(PythonFrontend)])
     }
 }
 
@@ -213,13 +249,40 @@ mod tests {
     }
 
     #[test]
+    fn default_registry_resolves_python() {
+        let reg = FrontendRegistry::default();
+        let fe = reg.frontend_for(Language::Python).expect("python covered");
+        assert_eq!(fe.family(), "python");
+        assert!(reg.supports(Language::Python));
+    }
+
+    #[test]
     fn default_registry_does_not_claim_unwired_languages() {
         let reg = FrontendRegistry::default();
         // Recognized by detection, but no frontend yet — resolves to None
-        // rather than being misrouted to the JS/TS frontend.
-        assert!(reg.frontend_for(Language::Python).is_none());
+        // rather than being misrouted to an existing frontend.
         assert!(reg.frontend_for(Language::Go).is_none());
+        assert!(reg.frontend_for(Language::Java).is_none());
         assert!(!reg.supports(Language::Rust));
+    }
+
+    #[test]
+    fn python_and_ecmascript_route_to_distinct_frontends() {
+        let reg = FrontendRegistry::default();
+        let py = reg.frontend_for(Language::Python).unwrap();
+        let es = reg.frontend_for(Language::TypeScript).unwrap();
+        assert_eq!(py.family(), "python");
+        assert_eq!(es.family(), "ecmascript");
+        // Python source lowers through the Python frontend.
+        let lowered = py
+            .lower_file(
+                "def f():\n    pass\n".to_string(),
+                Language::Python,
+                Utf8Path::new("m.py"),
+            )
+            .unwrap();
+        assert_eq!(lowered.ir.symbols.len(), 1);
+        assert_eq!(lowered.ir.symbols[0].name, "f");
     }
 
     #[test]
