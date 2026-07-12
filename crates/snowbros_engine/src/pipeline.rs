@@ -20,9 +20,11 @@ use snowbros_cache::FileFingerprint;
 use snowbros_cache::{config_fingerprint, hash_bytes, CacheData, CacheStats, FileEntry, Lookup};
 use snowbros_framework::nextjs::{self, NextInput, NextProjectModel};
 use snowbros_framework::{detect_frameworks, DetectedFramework, ProjectFacts};
-use snowbros_graph::{EdgeKind, Node, SemanticGraph};
-use snowbros_parser::{FileFacts, FrontendRegistry};
-use snowbros_resolver::{resolve, FileSet, Resolution, TsPaths};
+use snowbros_graph::{EdgeKind, Node, NodeId, SemanticGraph};
+use snowbros_parser::{FileFacts, FrontendRegistry, Language};
+use snowbros_resolver::{
+    resolve, resolve_python_import, FileSet, PyResolution, Resolution, TsPaths,
+};
 use snowbros_rules::{EnvDeclaration, ImportBinding, UnresolvedImport};
 use snowbros_scanner::{scan, ScanResult};
 use snowbros_semantic::{ImportedNames, SemanticModel};
@@ -60,6 +62,9 @@ pub struct Pipeline {
     pub symbol_graph: SemanticGraph,
     /// The Next.js project model, when the project is a routed Next.js app.
     pub next_model: Option<NextProjectModel>,
+    /// Detected language of each analyzed source file (root-relative path →
+    /// language), used by the rule scheduler to gate rules by language.
+    pub file_languages: BTreeMap<Utf8PathBuf, Language>,
 }
 
 /// Root env files considered declarations (`.env.example` is docs, not
@@ -95,6 +100,62 @@ fn read_env_declarations(root: &Utf8PathBuf) -> Vec<EnvDeclaration> {
     out
 }
 
+/// Resolves one Python import into graph edges, symbol bindings, and
+/// unresolved entries, using Python module resolution.
+///
+/// Symbol bindings are emitted only when the import names a *specific* module
+/// (`from pkg.models import User`) — then the imported names are symbols in
+/// that one module. A bare `from . import a, b` names submodules, not symbols,
+/// so it contributes import edges but no symbol bindings. Python package
+/// imports (`import os`) resolve to [`PyResolution::External`] and add no node,
+/// keeping the graph free of unactionable standard-library packages.
+#[allow(clippy::too_many_arguments)]
+fn resolve_python(
+    path: &Utf8PathBuf,
+    import: &snowbros_parser::Import,
+    file_set: &FileSet,
+    from_id: NodeId,
+    graph: &mut SemanticGraph,
+    import_bindings: &mut Vec<ImportBinding>,
+    unresolved: &mut Vec<UnresolvedImport>,
+) {
+    match resolve_python_import(path, &import.specifier, &import.names, file_set) {
+        PyResolution::Project(targets) => {
+            for target in &targets {
+                let to_id = graph.add_node(Node::file(target.clone()));
+                graph.add_edge(from_id, to_id, EdgeKind::Imports);
+            }
+            let names_a_specific_module = !import.specifier.chars().all(|c| c == '.');
+            if names_a_specific_module && targets.len() == 1 {
+                let names: Vec<String> = import
+                    .names
+                    .iter()
+                    .filter(|n| n.as_str() != "*")
+                    .cloned()
+                    .collect();
+                if !names.is_empty() {
+                    import_bindings.push(ImportBinding {
+                        from: path.clone(),
+                        to: targets[0].clone(),
+                        names,
+                    });
+                }
+            }
+        }
+        // Standard library / installed package — recognized, not flagged.
+        PyResolution::External => {}
+        PyResolution::Unresolved(specifier) => {
+            unresolved.push(UnresolvedImport {
+                file: path.clone(),
+                specifier,
+                span: import.span,
+                // Python has no tsconfig aliases.
+                matched_alias: false,
+            });
+        }
+    }
+}
+
 /// Runs the pipeline on a project root. `use_cache: false` forces a
 /// cold run and skips persisting.
 pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
@@ -120,15 +181,20 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
     };
 
     // Parse in parallel; collect() preserves input order, keeping graph
-    // construction below fully deterministic. Each file yields its new
-    // cache entry plus whether the cache served it.
-    type PerFile = (Utf8PathBuf, FileEntry, bool);
+    // construction below fully deterministic. Each file yields its detected
+    // language, its new cache entry, and whether the cache served it. Every
+    // language a registered frontend handles is analyzed — not just the
+    // ECMAScript family.
+    type PerFile = (Utf8PathBuf, Language, FileEntry, bool);
     let per_file: Vec<PerFile> = scanned
-        .ecmascript_files()
+        .files
+        .iter()
+        .filter(|f| f.language.is_some_and(|l| registry.supports(l)))
         .collect::<Vec<_>>()
         .par_iter()
         .map(|file| {
             let abs = root.join(&file.path);
+            let language = file.language.expect("filtered to files with a language");
             let (entry, hit) = match cache.lookup(&file.path, abs.as_std_path()) {
                 Lookup::Fresh(entry) => {
                     debug!(target: "snowbros::cache", path = %file.path, "cache hit");
@@ -148,8 +214,6 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                     let entry = match content {
                         Ok(source) => {
                             let content_hash = hash_bytes(source.as_bytes());
-                            let language =
-                                file.language.expect("ecmascript_files guarantees language");
                             // Dispatch the parse phase through the language
                             // frontend. It extracts facts and lowers to Atlas
                             // IR in one pass, so both ride the cache together.
@@ -188,7 +252,7 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                     (entry, false)
                 }
             };
-            (file.path.clone(), entry, hit)
+            (file.path.clone(), language, entry, hit)
         })
         .collect();
 
@@ -203,17 +267,33 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
     let mut file_facts: BTreeMap<Utf8PathBuf, FileFacts> = BTreeMap::new();
     let mut import_bindings: Vec<ImportBinding> = Vec::new();
     let mut ir_modules: Vec<snowbros_ir::Module> = Vec::new();
+    let mut file_languages: BTreeMap<Utf8PathBuf, Language> = BTreeMap::new();
 
-    for (path, entry, hit) in per_file {
+    for (path, language, entry, hit) in per_file {
         if hit {
             stats.hits += 1;
         } else {
             stats.misses += 1;
         }
+        file_languages.insert(path.clone(), language);
         let from_id = graph.add_node(Node::file(path.clone()));
         match &entry.facts {
             Some(facts) => {
                 for import in &facts.imports {
+                    // Resolution is language-specific: Python modules resolve
+                    // by Python's rules, everything else by the JS/TS resolver.
+                    if language == Language::Python {
+                        resolve_python(
+                            &path,
+                            import,
+                            &file_set,
+                            from_id,
+                            &mut graph,
+                            &mut import_bindings,
+                            &mut unresolved,
+                        );
+                        continue;
+                    }
                     match resolve(&path, &import.specifier, &file_set, &aliases) {
                         Resolution::Project(target) => {
                             let to_id = graph.add_node(Node::file(target.clone()));
@@ -331,5 +411,6 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
         semantic,
         symbol_graph,
         next_model,
+        file_languages,
     })
 }
