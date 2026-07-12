@@ -55,6 +55,11 @@ pub fn resolve_python_import(
 
 /// Resolves a relative import by walking up `dots - 1` package levels from the
 /// importing file's directory, then into the remaining dotted module path.
+///
+/// Paths are assembled as forward-slash strings (not via [`Utf8Path::join`],
+/// which inserts a backslash on Windows) so a resolved target matches the
+/// scanner's forward-slash file paths on every platform — the engine's
+/// determinism contract.
 fn resolve_relative(
     from: &Utf8Path,
     specifier: &str,
@@ -64,14 +69,17 @@ fn resolve_relative(
 ) -> PyResolution {
     // Start at the importing file's directory (its package), then ascend one
     // directory for each dot beyond the first.
-    let mut base = from.parent().unwrap_or(Utf8Path::new("")).to_path_buf();
+    let mut base = from
+        .parent()
+        .map(|p| p.as_str().to_string())
+        .unwrap_or_default();
     for _ in 1..dots {
-        base = base.parent().map(Utf8Path::to_path_buf).unwrap_or_default();
+        base = parent_str(&base);
     }
 
     let module_path = &specifier[dots..]; // e.g. "mod.sub" in ".mod.sub", "" in "."
     if !module_path.is_empty() {
-        let target = base.join(module_path.replace('.', "/"));
+        let target = join_str(&base, &module_path.replace('.', "/"));
         return match probe(&target, files) {
             Some(path) => PyResolution::Project(vec![path]),
             None => PyResolution::Unresolved(specifier.to_string()),
@@ -85,7 +93,7 @@ fn resolve_relative(
     let mut targets: Vec<Utf8PathBuf> = names
         .iter()
         .filter(|n| n.as_str() != "*")
-        .filter_map(|n| probe(&base.join(n), files))
+        .filter_map(|n| probe(&join_str(&base, n), files))
         .collect();
     if targets.is_empty() {
         // Fall back to the package itself (`__init__.py`), if present.
@@ -102,21 +110,40 @@ fn resolve_relative(
     }
 }
 
+/// The parent of a forward-slash path string (everything before the last `/`),
+/// or empty for a top-level segment.
+fn parent_str(path: &str) -> String {
+    match path.rsplit_once('/') {
+        Some((parent, _)) => parent.to_string(),
+        None => String::new(),
+    }
+}
+
+/// Joins a forward-slash base and a relative segment with `/`, avoiding a
+/// leading slash when the base is empty (a top-level module).
+fn join_str(base: &str, rest: &str) -> String {
+    if base.is_empty() {
+        rest.to_string()
+    } else {
+        format!("{base}/{rest}")
+    }
+}
+
 /// Resolves an absolute dotted import. Probes for a matching project file
 /// first (a first-party top-level package), falling back to `External` for
 /// the standard library or an installed third-party package.
 fn resolve_absolute(specifier: &str, files: &FileSet) -> PyResolution {
-    let target = Utf8PathBuf::from(specifier.replace('.', "/"));
+    let target = specifier.replace('.', "/");
     match probe(&target, files) {
         Some(path) => PyResolution::Project(vec![path]),
         None => PyResolution::External,
     }
 }
 
-/// Probes a module path against the file set: `<target>.py` then
-/// `<target>/__init__.py` (a package). `.pyi` stubs are not treated as
-/// modules for graph purposes.
-fn probe(target: &Utf8Path, files: &FileSet) -> Option<Utf8PathBuf> {
+/// Probes a module path (a forward-slash string) against the file set:
+/// `<target>.py` then `<target>/__init__.py` (a package). `.pyi` stubs are not
+/// treated as modules for graph purposes.
+fn probe(target: &str, files: &FileSet) -> Option<Utf8PathBuf> {
     let module = Utf8PathBuf::from(format!("{target}.py"));
     if files.contains(&module) {
         return Some(module);
