@@ -104,6 +104,50 @@ impl LanguageFrontend for EcmaScriptFrontend {
     }
 }
 
+/// The set of language frontends available to the engine.
+///
+/// The registry owns its frontends and resolves a detected [`Language`] to
+/// the one frontend that handles it. Exactly one frontend must claim any
+/// given language (frontends' [`LanguageFrontend::handles`] sets are
+/// non-overlapping); resolution returns the first match in registration
+/// order, which is deterministic because registration order is fixed.
+///
+/// Adding a language to Atlas is registering its frontend here — the pipeline
+/// itself stays language-agnostic.
+pub struct FrontendRegistry {
+    frontends: Vec<Box<dyn LanguageFrontend>>,
+}
+
+impl FrontendRegistry {
+    /// Builds a registry from an explicit, ordered list of frontends.
+    pub fn from_frontends(frontends: Vec<Box<dyn LanguageFrontend>>) -> Self {
+        Self { frontends }
+    }
+
+    /// The frontend that handles `language`, or `None` if no registered
+    /// frontend claims it (the file is recognized but not yet analyzable).
+    pub fn frontend_for(&self, language: Language) -> Option<&dyn LanguageFrontend> {
+        self.frontends
+            .iter()
+            .find(|fe| fe.handles(language))
+            .map(|fe| fe.as_ref())
+    }
+
+    /// Whether some registered frontend handles `language`.
+    pub fn supports(&self, language: Language) -> bool {
+        self.frontend_for(language).is_some()
+    }
+}
+
+impl Default for FrontendRegistry {
+    /// The default registry: every frontend Atlas ships today. Currently the
+    /// JavaScript/TypeScript family via [`EcmaScriptFrontend`]; new languages
+    /// register here as their frontends land.
+    fn default() -> Self {
+        Self::from_frontends(vec![Box::new(EcmaScriptFrontend)])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,5 +195,46 @@ mod tests {
             .err();
         // TypeScript parses fine; a language with no grammar surfaces the error.
         assert!(err.is_none());
+    }
+
+    #[test]
+    fn default_registry_resolves_the_ecmascript_family() {
+        let reg = FrontendRegistry::default();
+        for lang in [
+            Language::JavaScript,
+            Language::Jsx,
+            Language::TypeScript,
+            Language::Tsx,
+        ] {
+            let fe = reg.frontend_for(lang).expect("ecmascript family covered");
+            assert_eq!(fe.family(), "ecmascript");
+            assert!(reg.supports(lang));
+        }
+    }
+
+    #[test]
+    fn default_registry_does_not_claim_unwired_languages() {
+        let reg = FrontendRegistry::default();
+        // Recognized by detection, but no frontend yet — resolves to None
+        // rather than being misrouted to the JS/TS frontend.
+        assert!(reg.frontend_for(Language::Python).is_none());
+        assert!(reg.frontend_for(Language::Go).is_none());
+        assert!(!reg.supports(Language::Rust));
+    }
+
+    #[test]
+    fn registry_routes_lowering_through_the_matching_frontend() {
+        let reg = FrontendRegistry::default();
+        let src = "export const x = 1;";
+        let path = Utf8Path::new("src/x.ts");
+        let via_registry = reg
+            .frontend_for(Language::TypeScript)
+            .unwrap()
+            .lower_file(src.to_string(), Language::TypeScript, path)
+            .unwrap();
+        let direct = EcmaScriptFrontend
+            .lower_file(src.to_string(), Language::TypeScript, path)
+            .unwrap();
+        assert_eq!(via_registry, direct);
     }
 }
