@@ -15,7 +15,7 @@ pub mod lowering;
 pub mod treesitter;
 
 pub use facts::{extract_facts, FileFacts, NamedItem, SecretCandidate, SecretSignal};
-pub use frontend::{LanguageFrontend, LoweredFile};
+pub use frontend::{EcmaScriptFrontend, LanguageFrontend, LoweredFile};
 pub use imports::{extract_imports, Import, ImportKind};
 pub use language::Language;
 pub use lowering::lower;

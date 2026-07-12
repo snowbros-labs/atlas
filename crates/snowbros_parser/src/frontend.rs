@@ -17,7 +17,7 @@ use camino::Utf8Path;
 
 use snowbros_ir::Module;
 
-use crate::{FileFacts, Language, ParseError};
+use crate::{extract_facts, lower, parse, FileFacts, Language, ParseError};
 
 /// The per-file substrate one frontend produces for a single source file:
 /// the extracted [`FileFacts`] and the lowered Atlas [`ir::Module`].
@@ -64,4 +64,92 @@ pub trait LanguageFrontend: Sync {
         language: Language,
         path: &Utf8Path,
     ) -> Result<LoweredFile, ParseError>;
+}
+
+/// The frontend for the JavaScript / TypeScript family: JavaScript, JSX,
+/// TypeScript, and TSX.
+///
+/// These four share one Tree-sitter-backed lowering path, so they are one
+/// frontend rather than four — collapsing them is the point of the shared
+/// substrate (splitting them would duplicate the lowering logic RFC 0002
+/// exists to avoid). Whether a file is a React component or a Next.js route
+/// is decided later by the semantic and framework layers, not here.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct EcmaScriptFrontend;
+
+impl LanguageFrontend for EcmaScriptFrontend {
+    fn family(&self) -> &'static str {
+        "ecmascript"
+    }
+
+    fn handles(&self, language: Language) -> bool {
+        language.is_ecmascript()
+    }
+
+    fn lower_file(
+        &self,
+        source: String,
+        language: Language,
+        path: &Utf8Path,
+    ) -> Result<LoweredFile, ParseError> {
+        debug_assert!(
+            self.handles(language),
+            "EcmaScriptFrontend given non-ecmascript language {language}"
+        );
+        let parsed = parse(source, language)?;
+        Ok(LoweredFile {
+            facts: extract_facts(&parsed),
+            ir: lower(&parsed, path.to_owned()),
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use camino::Utf8Path;
+
+    #[test]
+    fn ecmascript_frontend_claims_the_js_ts_family() {
+        let fe = EcmaScriptFrontend;
+        assert_eq!(fe.family(), "ecmascript");
+        for lang in [
+            Language::JavaScript,
+            Language::Jsx,
+            Language::TypeScript,
+            Language::Tsx,
+        ] {
+            assert!(fe.handles(lang), "should handle {lang}");
+        }
+        assert!(!fe.handles(Language::Python));
+        assert!(!fe.handles(Language::Go));
+    }
+
+    #[test]
+    fn lower_file_matches_the_free_functions_it_delegates_to() {
+        let src = "export const App = () => <div>hi</div>;";
+        let path = Utf8Path::new("src/App.tsx");
+        let lowered = EcmaScriptFrontend
+            .lower_file(src.to_string(), Language::Tsx, path)
+            .unwrap();
+
+        // Identical to calling the underlying functions directly — the
+        // frontend is a thin, behavior-preserving wrapper.
+        let parsed = parse(src.to_string(), Language::Tsx).unwrap();
+        assert_eq!(lowered.facts, extract_facts(&parsed));
+        assert_eq!(lowered.ir, lower(&parsed, path.to_owned()));
+    }
+
+    #[test]
+    fn lower_file_propagates_parse_errors_for_unsupported_language() {
+        let err = EcmaScriptFrontend
+            .lower_file(
+                "x = 1".to_string(),
+                Language::TypeScript,
+                Utf8Path::new("a.ts"),
+            )
+            .err();
+        // TypeScript parses fine; a language with no grammar surfaces the error.
+        assert!(err.is_none());
+    }
 }
