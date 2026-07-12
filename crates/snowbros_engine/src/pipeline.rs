@@ -21,7 +21,7 @@ use snowbros_cache::{config_fingerprint, hash_bytes, CacheData, CacheStats, File
 use snowbros_framework::nextjs::{self, NextInput, NextProjectModel};
 use snowbros_framework::{detect_frameworks, DetectedFramework, ProjectFacts};
 use snowbros_graph::{EdgeKind, Node, SemanticGraph};
-use snowbros_parser::{extract_facts, lower, parse, FileFacts};
+use snowbros_parser::{FileFacts, FrontendRegistry};
 use snowbros_resolver::{resolve, FileSet, Resolution, TsPaths};
 use snowbros_rules::{EnvDeclaration, ImportBinding, UnresolvedImport};
 use snowbros_scanner::{scan, ScanResult};
@@ -108,6 +108,10 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
     let file_set: FileSet = scanned.files.iter().map(|f| f.path.clone()).collect();
     let aliases = TsPaths::load(root);
 
+    // Language frontends drive the per-file parse phase. The registry is
+    // shared read-only across the parallel lower below (frontends are Sync).
+    let registry = FrontendRegistry::default();
+
     let config_fp = config_fingerprint(root.as_std_path(), env!("CARGO_PKG_VERSION"));
     let cache = if use_cache {
         CacheData::load(root.as_std_path(), &config_fp)
@@ -146,14 +150,22 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                             let content_hash = hash_bytes(source.as_bytes());
                             let language =
                                 file.language.expect("ecmascript_files guarantees language");
-                            match parse(source, language) {
-                                Ok(parsed) => FileEntry {
+                            // Dispatch the parse phase through the language
+                            // frontend. It extracts facts and lowers to Atlas
+                            // IR in one pass, so both ride the cache together.
+                            let lowered = registry
+                                .frontend_for(language)
+                                .ok_or_else(|| format!("no frontend for language `{language}`"))
+                                .and_then(|fe| {
+                                    fe.lower_file(source, language, &file.path)
+                                        .map_err(|e| e.to_string())
+                                });
+                            match lowered {
+                                Ok(lowered) => FileEntry {
                                     fingerprint,
                                     content_hash,
-                                    facts: Some(extract_facts(&parsed)),
-                                    // Lower to Atlas IR in the same pass so
-                                    // it rides the cache with the facts.
-                                    ir: Some(lower(&parsed, file.path.clone())),
+                                    facts: Some(lowered.facts),
+                                    ir: Some(lowered.ir),
                                     failure: None,
                                 },
                                 Err(e) => FileEntry {
@@ -161,7 +173,7 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                                     content_hash,
                                     facts: None,
                                     ir: None,
-                                    failure: Some(e.to_string()),
+                                    failure: Some(e),
                                 },
                             }
                         }
