@@ -2,13 +2,15 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use snowbros_core::Span;
 use snowbros_framework::nextjs::NextProjectModel;
 use snowbros_framework::{framework_packages, DetectedFramework, PackageJson};
 use snowbros_graph::SemanticGraph;
-use snowbros_parser::FileFacts;
+use snowbros_parser::{FileFacts, Language};
 use snowbros_semantic::SemanticModel;
+
+use crate::requirements::RuleRequirements;
 
 /// An import the resolver could not map to a project file or package.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,6 +76,12 @@ pub struct AnalysisContext<'a> {
     /// The Next.js project model, when the project is a routed Next.js
     /// app. `None` otherwise; Next.js structural rules no-op without it.
     pub next_model: Option<&'a NextProjectModel>,
+    /// Detected language of each source file (root-relative path → language).
+    /// The scheduler uses it to decide whether a rule's findings on a file
+    /// are admissible for that file's language (see [`AnalysisContext::admits`]).
+    /// Empty for legacy callers, which makes every finding admissible — the
+    /// pre-multi-language behavior.
+    pub file_languages: BTreeMap<Utf8PathBuf, Language>,
 }
 
 /// Inputs for building an [`AnalysisContext`].
@@ -119,6 +127,29 @@ impl<'a> AnalysisContext<'a> {
             import_bindings: inputs.import_bindings,
             semantic: inputs.semantic,
             next_model: inputs.next_model,
+            file_languages: BTreeMap::new(),
+        }
+    }
+
+    /// Attaches the per-file language map used by the scheduler to gate rules
+    /// by language. Builder-style so the `new` signature — and every existing
+    /// caller and test — stays unchanged.
+    pub fn with_file_languages(mut self, file_languages: BTreeMap<Utf8PathBuf, Language>) -> Self {
+        self.file_languages = file_languages;
+        self
+    }
+
+    /// Whether a finding a rule produced for `file` is admissible under the
+    /// rule's `requirements`.
+    ///
+    /// A file whose language is known must satisfy the rule's language + stage
+    /// contract. A file with no known language — a manifest (`package.json`),
+    /// an env file, any non-source artifact — is language-neutral and always
+    /// admitted; those findings are not gated by a source-language policy.
+    pub fn admits(&self, requirements: &RuleRequirements, file: &Utf8Path) -> bool {
+        match self.file_languages.get(file) {
+            Some(language) => requirements.admits(*language),
+            None => true,
         }
     }
 }
