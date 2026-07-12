@@ -57,6 +57,7 @@ fn grammar(language: Language) -> Option<tree_sitter::Language> {
         Language::JavaScript | Language::Jsx => Some(tree_sitter_javascript::LANGUAGE.into()),
         Language::TypeScript => Some(tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()),
         Language::Tsx => Some(tree_sitter_typescript::LANGUAGE_TSX.into()),
+        Language::Python => Some(tree_sitter_python::LANGUAGE.into()),
         _ => None,
     }
 }
@@ -100,8 +101,16 @@ mod tests {
     }
 
     #[test]
+    fn parses_valid_python() {
+        let parsed = parse("def greet(name):\n    return name\n", Language::Python).unwrap();
+        assert!(!parsed.has_errors());
+        assert_eq!(parsed.tree.root_node().kind(), "module");
+    }
+
+    #[test]
     fn rejects_unsupported_language() {
-        let err = parse("print('hi')", Language::Python).unwrap_err();
+        // Go has no grammar wired up yet.
+        let err = parse("package main", Language::Go).unwrap_err();
         assert!(matches!(err, ParseError::UnsupportedLanguage(_)));
     }
 }
