@@ -12,6 +12,7 @@ use snowbros_graph::{EdgeKind, NodeKind};
 
 use crate::context::AnalysisContext;
 use crate::registry::Rule;
+use crate::requirements::{AnalysisStage, LanguageSupport, RuleRequirements};
 use crate::rules::file_location;
 
 /// See module docs.
@@ -29,6 +30,7 @@ const EXCLUDED_DIR_MARKERS: &[&str] = &[
     "e2e/",
     "cypress/",
     "stories/",
+    "migrations/", // Django/Alembic migrations — loaded by the framework
 ];
 
 /// File-name suffixes that mark entry points / tool-consumed files.
@@ -44,6 +46,7 @@ const EXCLUDED_SUFFIXES: &[&str] = &[
     ".stories.tsx",
     ".stories.ts",
     ".d.ts",
+    "_test.py", // Python test module convention
 ];
 
 /// Exact file names (any directory) that are conventionally entry points.
@@ -60,6 +63,19 @@ const EXCLUDED_NAMES: &[&str] = &[
     "server.js",
     "worker.ts",
     "worker.js",
+    // Python entry points and tool-loaded modules: run directly, imported by
+    // string path, or loaded implicitly by the runtime/framework — never dead
+    // just because no source file imports them.
+    "__init__.py", // package marker, imported implicitly
+    "__main__.py", // `python -m pkg` entry
+    "main.py",     // conventional script entry
+    "conftest.py", // pytest fixtures, auto-loaded
+    "setup.py",    // packaging entry
+    "manage.py",   // Django CLI entry
+    "wsgi.py",     // WSGI server entry
+    "asgi.py",     // ASGI server entry
+    "settings.py", // Django settings, loaded by string path
+    "urls.py",     // Django URLconf, loaded by string path
 ];
 
 pub(crate) fn is_excluded(path: &str) -> bool {
@@ -69,6 +85,11 @@ pub(crate) fn is_excluded(path: &str) -> bool {
         return true;
     }
     if EXCLUDED_NAMES.contains(&name) {
+        return true;
+    }
+    // Python test modules are `test_*.py` (prefix) as well as `*_test.py`
+    // (suffix, above) — pytest discovers both; neither is dead code.
+    if name.starts_with("test_") && name.ends_with(".py") {
         return true;
     }
     if EXCLUDED_SUFFIXES.iter().any(|s| name.ends_with(s)) {
@@ -82,6 +103,16 @@ pub(crate) fn is_excluded(path: &str) -> bool {
 impl Rule for DeadFiles {
     fn id(&self) -> &'static str {
         "graph/dead-file"
+    }
+
+    /// Language-agnostic: a file with no incoming import edges is dead
+    /// regardless of language. Runs at the semantic (import-graph) stage, with
+    /// language-specific entry-point conventions handled by [`is_excluded`].
+    fn requirements(&self) -> RuleRequirements {
+        RuleRequirements {
+            languages: LanguageSupport::Any,
+            minimum_stage: AnalysisStage::Semantic,
+        }
     }
 
     fn run(&self, ctx: &AnalysisContext<'_>) -> Vec<Diagnostic> {
@@ -167,6 +198,36 @@ mod tests {
         g.add_node(Node::file("scripts/migrate.ts"));
 
         assert!(ctx_diags(&g).is_empty());
+    }
+
+    #[test]
+    fn python_entrypoints_and_tests_excluded() {
+        let mut g = SemanticGraph::new();
+        g.add_node(Node::file("pkg/__init__.py"));
+        g.add_node(Node::file("main.py"));
+        g.add_node(Node::file("conftest.py"));
+        g.add_node(Node::file("manage.py"));
+        g.add_node(Node::file("proj/settings.py"));
+        g.add_node(Node::file("api/test_views.py")); // test_ prefix
+        g.add_node(Node::file("api/models_test.py")); // _test.py suffix
+        g.add_node(Node::file("app/migrations/0001_initial.py"));
+
+        assert!(ctx_diags(&g).is_empty());
+    }
+
+    #[test]
+    fn orphan_python_module_is_reported() {
+        let mut g = SemanticGraph::new();
+        g.add_node(Node::file("pkg/orphan.py"));
+        assert!(ctx_diags(&g).contains(&"pkg/orphan.py".to_string()));
+    }
+
+    #[test]
+    fn is_language_agnostic() {
+        assert_eq!(
+            DeadFiles.requirements().languages,
+            crate::requirements::LanguageSupport::Any
+        );
     }
 
     #[test]
