@@ -13,6 +13,7 @@ pub mod context;
 pub mod filter;
 pub mod metadata;
 pub mod registry;
+pub mod requirements;
 pub mod rules;
 
 pub use context::{
@@ -21,6 +22,9 @@ pub use context::{
 pub use filter::apply_config;
 pub use metadata::{rule_metadata, Example, Maturity, RuleMetadata, METADATA};
 pub use registry::{builtin_rules, run_all, Rule};
+pub use requirements::{
+    frontend_maturity, AnalysisStage, LanguageMaturity, LanguageSupport, RuleRequirements,
+};
 
 // Re-exported so every subsystem shares the same core vocabulary.
 pub use snowbros_core as core;
