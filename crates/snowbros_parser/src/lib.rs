@@ -12,6 +12,7 @@ pub mod frontend;
 pub mod imports;
 pub mod language;
 pub mod lowering;
+pub mod python;
 pub mod treesitter;
 
 pub use facts::{extract_facts, FileFacts, NamedItem, SecretCandidate, SecretSignal};
