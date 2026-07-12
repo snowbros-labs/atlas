@@ -16,9 +16,11 @@
 
 pub mod fileset;
 pub mod jsonc;
+pub mod python;
 pub mod tsconfig;
 
 pub use fileset::FileSet;
+pub use python::{resolve_python_import, PyResolution};
 pub use tsconfig::TsPaths;
 
 use camino::{Utf8Path, Utf8PathBuf};
