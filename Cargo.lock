@@ -1280,7 +1280,7 @@ checksum = "8ed6a63f02c8539c91a8685a86f4099661ba3da017932f6ebbea6de3f0fa7c90"
 
 [[package]]
 name = "snowbros-atlas"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "assert_cmd",
  "camino",
@@ -1301,14 +1301,14 @@ dependencies = [
 
 [[package]]
 name = "snowbros_architecture"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "snowbros_core",
 ]
 
 [[package]]
 name = "snowbros_cache"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "serde",
@@ -1323,7 +1323,7 @@ dependencies = [
 
 [[package]]
 name = "snowbros_core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "serde",
@@ -1334,14 +1334,14 @@ dependencies = [
 
 [[package]]
 name = "snowbros_deps"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "snowbros_core",
 ]
 
 [[package]]
 name = "snowbros_engine"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "rayon",
@@ -1362,7 +1362,7 @@ dependencies = [
 
 [[package]]
 name = "snowbros_framework"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "serde",
@@ -1372,7 +1372,7 @@ dependencies = [
 
 [[package]]
 name = "snowbros_graph"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "petgraph",
@@ -1382,7 +1382,7 @@ dependencies = [
 
 [[package]]
 name = "snowbros_ir"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "serde",
@@ -1392,7 +1392,7 @@ dependencies = [
 
 [[package]]
 name = "snowbros_lsp"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "snowbros_core",
@@ -1404,7 +1404,7 @@ dependencies = [
 
 [[package]]
 name = "snowbros_output"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1413,7 +1413,7 @@ dependencies = [
 
 [[package]]
 name = "snowbros_parser"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "serde",
@@ -1429,21 +1429,21 @@ dependencies = [
 
 [[package]]
 name = "snowbros_performance"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "snowbros_core",
 ]
 
 [[package]]
 name = "snowbros_plugin"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "snowbros_core",
 ]
 
 [[package]]
 name = "snowbros_resolver"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "serde",
@@ -1454,7 +1454,7 @@ dependencies = [
 
 [[package]]
 name = "snowbros_rules"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "serde",
@@ -1469,7 +1469,7 @@ dependencies = [
 
 [[package]]
 name = "snowbros_scanner"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "ignore",
@@ -1481,14 +1481,14 @@ dependencies = [
 
 [[package]]
 name = "snowbros_security"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "snowbros_core",
 ]
 
 [[package]]
 name = "snowbros_semantic"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "camino",
  "serde_json",
