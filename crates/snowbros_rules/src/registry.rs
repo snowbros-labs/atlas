@@ -34,6 +34,7 @@ pub fn builtin_rules() -> Vec<Box<dyn Rule>> {
         Box::new(rules::boundary::PrivateEnvInClient),
         Box::new(rules::boundary::ServerOnlyInClient),
         Box::new(rules::circular::CircularImports),
+        Box::new(rules::complexity::LargeFunction),
         Box::new(rules::dead_files::DeadFiles),
         Box::new(rules::forced_dynamic::ForcedDynamic),
         Box::new(rules::hardcoded_secret::HardcodedSecrets),
