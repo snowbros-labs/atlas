@@ -98,12 +98,32 @@ scorecard plus every finding and its evidence. ([sample](assets/sample-report.ht
 
 ![Snowbros Atlas HTML report](assets/screenshot-html-report.png)
 
+### Python
+
+The same engine analyzes Python. Point it at the importable package directory:
+
+```sh
+git clone --depth 1 https://github.com/fastapi/fastapi && cd fastapi
+sb analyze fastapi
+```
+
+On FastAPI's `fastapi/` package (48 files, ~400 ms), Atlas reports 14 large
+functions (`jsonable_encoder` at 146 lines, `analyze_param` at 160), two real
+module-level import cycles, and seven dead re-export leaves — with **zero
+Python-specific false positives**. `complexity/large-function` is the same rule
+that runs on TypeScript; nothing in it branches on language. See
+[real-world examples](docs/EXAMPLES.md#fastapi-python--23-findings-health-92100).
+
 ## Features
 
 - **Deterministic** — findings are a pure function of your code and config.
   Warm-cache output is byte-identical to a cold run (proven by tests).
 - **Fast** — incremental cache: a 500-file repo analyzes in ~270 ms cold,
   ~43 ms warm, ~34 ms after a one-file change (release build).
+- **Multi-language** — JavaScript/TypeScript **and Python** lower into one
+  shared semantic IR, so language-neutral rules (import cycles, dead files,
+  unresolved imports, `complexity/large-function`) run on either with no
+  per-language special-casing.
 - **Whole-project analysis** — semantic import graph, cycle detection,
   dead-file reachability, Next.js server/client boundary tracking through
   aliases and re-export chains.
