@@ -26,6 +26,11 @@ pub struct UnresolvedImport {
     /// target) rather than an ordinary unresolved import. Set by the
     /// resolver-aware pipeline; `false` by default.
     pub matched_alias: bool,
+    /// Language-specific narrative of how the resolver probed for the target
+    /// and came up empty (e.g. which extensions or package files it tried).
+    /// The pipeline fills this per language so the rule can stay generic —
+    /// no language-hardcoded strings in the rule body.
+    pub probe_detail: String,
 }
 
 /// A resolved project-internal import with the names it binds.

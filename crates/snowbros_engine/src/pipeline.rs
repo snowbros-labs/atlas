@@ -145,12 +145,17 @@ fn resolve_python(
         // Standard library / installed package — recognized, not flagged.
         PyResolution::External => {}
         PyResolution::Unresolved(specifier) => {
+            let probe_detail = format!(
+                "probed `{specifier}` for a sibling `.py` module or package \
+                 `__init__.py` — no match"
+            );
             unresolved.push(UnresolvedImport {
                 file: path.clone(),
                 specifier,
                 span: import.span,
                 // Python has no tsconfig aliases.
                 matched_alias: false,
+                probe_detail,
             });
         }
     }
@@ -313,11 +318,17 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                             // yet resolves nowhere is a broken alias, not a
                             // plain missing module.
                             let matched_alias = !aliases.expand(&specifier).is_empty();
+                            let probe_detail = format!(
+                                "probed `{specifier}` with extensions \
+                                 ts/tsx/d.ts/js/jsx/mjs/cjs/json and index files \
+                                 — no match"
+                            );
                             unresolved.push(UnresolvedImport {
                                 file: path.clone(),
                                 specifier: specifier.clone(),
                                 span: import.span,
                                 matched_alias,
+                                probe_detail,
                             });
                         }
                     }

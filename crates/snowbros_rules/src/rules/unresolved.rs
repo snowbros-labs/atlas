@@ -1,11 +1,18 @@
 //! `imports/unresolved-import` — relative imports pointing at nothing.
 //!
-//! Scope is deliberately narrow: only *relative* specifiers (`./x`,
-//! `../y`) are reported. A relative import that matches no file after
-//! extension and index probing is almost always a broken path or a
-//! deleted file. Alias and bare specifiers are excluded — an
-//! unconfigured alias usually means tsconfig knowledge we lack (package
-//! extends, monorepo roots), and guessing there would produce noise.
+//! Scope is deliberately narrow: only *relative* specifiers (dot-prefixed
+//! — `./x`, `../y` in ECMAScript, `.mod`, `..pkg` in Python) are reported.
+//! A relative import that matches no file after the language's own probing
+//! is almost always a broken path or a deleted file. Alias and bare
+//! specifiers are excluded — an unconfigured alias usually means config
+//! knowledge we lack (tsconfig extends, monorepo roots), and guessing
+//! there would produce noise. Absolute/package specifiers never reach this
+//! rule: the resolver treats an unknown bare or dotted-absolute import as
+//! External (stdlib / installed package), not unresolved.
+//!
+//! The rule stays language-agnostic: the per-language "how I probed"
+//! narrative arrives as data in [`UnresolvedImport::probe_detail`], set by
+//! the pipeline. No language-specific strings live here.
 //!
 //! Confidence is [`Confidence::Likely`], not certain: the target could
 //! be generated at build time.
@@ -14,6 +21,7 @@ use snowbros_core::{Confidence, Diagnostic, Evidence, Severity, SourceLocation};
 
 use crate::context::AnalysisContext;
 use crate::registry::Rule;
+use crate::requirements::{AnalysisStage, LanguageSupport, RuleRequirements};
 
 /// See module docs.
 pub struct UnresolvedImports;
@@ -23,17 +31,28 @@ impl Rule for UnresolvedImports {
         "imports/unresolved-import"
     }
 
+    /// Language-agnostic: a broken relative import is a property every wired
+    /// language's resolver reports the same way (dot-prefixed specifier, no
+    /// target). The per-language probe narrative rides in `probe_detail`, so
+    /// the rule runs on any language whose frontend supplies the semantic
+    /// (import) stage.
+    fn requirements(&self) -> RuleRequirements {
+        RuleRequirements {
+            languages: LanguageSupport::Any,
+            minimum_stage: AnalysisStage::Semantic,
+        }
+    }
+
     fn run(&self, ctx: &AnalysisContext<'_>) -> Vec<Diagnostic> {
         ctx.unresolved_imports
             .iter()
-            .filter(|u| u.specifier.starts_with("./") || u.specifier.starts_with("../"))
+            .filter(|u| u.specifier.starts_with('.'))
             .map(|u| {
                 Diagnostic::new(
                     self.id(),
                     "Unresolved relative import",
                     format!(
-                        "`{}` does not match any file in the project, even after \
-                         trying every known extension and index file. The import \
+                        "`{}` does not match any file in the project. The import \
                          will fail unless the target is generated at build time.",
                         u.specifier
                     ),
@@ -42,11 +61,7 @@ impl Rule for UnresolvedImports {
                     Confidence::Likely,
                     SourceLocation::new(u.file.clone(), u.span),
                 )
-                .with_evidence(Evidence::note(format!(
-                    "probed `{}` with extensions ts/tsx/d.ts/js/jsx/mjs/cjs/json \
-                     and index files — no match",
-                    u.specifier
-                )))
+                .with_evidence(Evidence::note(u.probe_detail.clone()))
             })
             .collect()
     }
@@ -115,12 +130,14 @@ mod tests {
                 specifier: "./missing".into(),
                 span: span(),
                 matched_alias: false,
+                probe_detail: "probed `./missing` — no match".into(),
             },
             UnresolvedImport {
                 file: "src/app.ts".into(),
                 specifier: "@/unknown-alias".into(),
                 span: span(),
                 matched_alias: false,
+                probe_detail: String::new(),
             },
         ];
         let ctx = AnalysisContext::new(
@@ -136,6 +153,39 @@ mod tests {
         assert!(diags[0].message.contains("`./missing`"));
         assert_eq!(diags[0].location.span.start.line, 3);
         assert_eq!(diags[0].confidence, Confidence::Likely);
+        // Evidence is the pipeline-supplied, language-specific narrative.
+        assert!(diags[0].evidence[0]
+            .description
+            .contains("probed `./missing`"));
+    }
+
+    #[test]
+    fn python_dot_relative_reported_via_probe_detail() {
+        // A single-dot Python relative import (`.missing_module`) must be
+        // caught by the dot-prefix filter, and its evidence must be the
+        // Python-flavored probe narrative — no language check in the rule.
+        let g = SemanticGraph::new();
+        let unresolved = vec![UnresolvedImport {
+            file: "pkg/main.py".into(),
+            specifier: ".missing_module".into(),
+            span: span(),
+            matched_alias: false,
+            probe_detail: "probed `.missing_module` for a sibling `.py` module or \
+                           package `__init__.py` — no match"
+                .into(),
+        }];
+        let ctx = AnalysisContext::new(
+            &g,
+            Default::default(),
+            crate::context::ContextInputs {
+                unresolved_imports: &unresolved,
+                ..Default::default()
+            },
+        );
+        let diags = UnresolvedImports.run(&ctx);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("`.missing_module`"));
+        assert!(diags[0].evidence[0].description.contains("`__init__.py`"));
     }
 
     #[test]
@@ -147,12 +197,14 @@ mod tests {
                 specifier: "@/moved/thing".into(),
                 span: span(),
                 matched_alias: true,
+                probe_detail: String::new(),
             },
             UnresolvedImport {
                 file: "src/app.ts".into(),
                 specifier: "./missing".into(),
                 span: span(),
                 matched_alias: false,
+                probe_detail: "probed `./missing` — no match".into(),
             },
         ];
         let ctx = AnalysisContext::new(
