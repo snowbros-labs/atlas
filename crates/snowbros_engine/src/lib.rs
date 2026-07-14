@@ -53,7 +53,8 @@ pub fn analyze(root: &Utf8PathBuf, use_cache: bool) -> Result<Analysis, String> 
             semantic: Some(&pipeline.semantic),
             next_model: pipeline.next_model.as_ref(),
         },
-    );
+    )
+    .with_file_languages(pipeline.file_languages.clone());
     let report = Report::new(apply_config(run_all(&ctx), &config));
     Ok(Analysis { pipeline, report })
 }

@@ -2,6 +2,7 @@
 
 pub mod boundary;
 pub mod circular;
+pub mod complexity;
 pub mod dead_files;
 pub mod forced_dynamic;
 pub mod hardcoded_secret;

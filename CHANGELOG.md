@@ -4,6 +4,55 @@ All notable changes to Snowbros Atlas are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com) and the
 project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.4.0] - 2026-07-14
+
+Multi-language foundation. Atlas grows from a JavaScript/TypeScript analyzer
+into a multi-language semantic platform: every language lowers into one
+shared Atlas IR, and rules are either language-agnostic or explicitly scoped
+to a language family — never a `if language == …` branch inside a detector.
+Python is the first new language, and the first cross-language rule proves
+the IR carries real diagnostics beyond ECMAScript.
+
+### Features
+
+- **Python support.** A `tree-sitter-python` frontend lowers Python into the
+  shared IR: functions, classes, module-level bindings, decorated
+  definitions, and imports (relative and absolute). A dedicated Python
+  import resolver follows Python's module rules — relative imports to sibling
+  modules and package `__init__.py`, absolute first-party imports (including
+  a package imported by its own name when the scan root *is* that package),
+  and standard-library / installed packages recognized as external and never
+  flagged.
+- **Language frontends.** Parsing is dispatched through a `FrontendRegistry`;
+  a new language is added by registering a `LanguageFrontend`, with no edit
+  to the pipeline. The ECMAScript family (JS/JSX/TS/TSX) is one frontend;
+  Python is another.
+- **Rule execution contract.** Each rule declares the languages and analysis
+  stage it needs (`RuleRequirements`); the scheduler runs a rule against a
+  file only when the file's language is supported and its frontend is mature
+  enough. Policy lives in one place — no language checks in rule bodies.
+- **`complexity/large-function` (Low/Possible, nursery).** The first
+  language-neutral rule: it reads only the shared IR (function body line
+  span), so it flags over-long top-level functions in TypeScript,
+  JavaScript, and Python with a single implementation.
+- **Cross-language rules.** `graph/no-circular-imports`, `graph/dead-file`
+  (with Python entry-point exclusions), and `imports/unresolved-import` now
+  run on Python as well as the ECMAScript family.
+
+### Fixed
+
+- **Absolute self-package Python imports.** When scanning a package
+  directory directly (e.g. `fastapi/`), absolute imports leading with the
+  package's own name (`from fastapi.encoders import x`) now resolve to the
+  project file instead of being treated as external — eliminating false
+  dead-file findings for internally-used modules.
+
+### Notes
+
+- 23 built-in rules. Python ships at `preview` maturity; existing JS/TS
+  analysis is byte-identical (verified warm-vs-cold and across the M0–M2
+  integration suites). The VS Code extension remains at 0.3.0 (LSP-compatible).
+
 ## [0.3.0] - 2026-07-11
 
 Atlas' first semantic TypeScript analysis engine. The analyzer moves from

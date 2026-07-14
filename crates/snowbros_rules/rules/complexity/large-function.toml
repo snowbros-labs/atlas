@@ -1,0 +1,20 @@
+id = "complexity/large-function"
+title = "Large function"
+category = "complexity"
+severity = "low"
+confidence = "possible"
+maturity = "nursery"
+description = "Flags a top-level function whose body spans more than 50 physical lines, measured over the shared Atlas IR so the same rule applies to every language (TypeScript, JavaScript, Python)."
+rationale = "Long functions concentrate many responsibilities in one place, which makes them harder to read, unit-test in isolation, and reuse. Length is a coarse but reliable early signal of a function that is doing too much."
+recommendation = "Extract cohesive groups of statements into smaller, well-named helper functions, or split the function along its natural responsibilities."
+false_positives = "A long but genuinely cohesive function (a large match/switch, a data table, or a generated body) is not necessarily a defect — hence low severity and 'possible' confidence. Only top-level function bodies are measured; methods are not counted."
+references = ["https://en.wikipedia.org/wiki/Cyclomatic_complexity"]
+tags = ["maintainability", "readability", "size"]
+
+[[bad_examples]]
+code = "function handle(req, res) {\n  // ... 70 lines of validation, parsing,\n  // business logic, and response shaping ...\n}"
+note = "A single function carrying validation, logic, and I/O — over the line ceiling."
+
+[[good_examples]]
+code = "function handle(req, res) {\n  const input = parse(req)\n  const result = process(input)\n  respond(res, result)\n}"
+note = "The same work split into small, individually testable functions."

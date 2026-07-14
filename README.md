@@ -214,12 +214,21 @@ The binary installs as both `snowbros` and the short alias `sb`.
 | `exports/unused-export` | Low | Possible |
 | `typescript/unreachable-symbol` | Low | Likely |
 | `graph/dead-file` | Low | Possible |
+| `complexity/large-function` | Low | Possible |
 
-A representative slice of the 22 built-in rules; run `sb explain <rule-id>`
+A representative slice of the 23 built-in rules; run `sb explain <rule-id>`
 for any one. TypeScript rules resolve over a semantic symbol model — a
 cross-file call graph and type-level IR — not just per-file facts. Inspect
 that model with `sb graph --symbols` (declaration kinds, `Calls`, and
 `TypeRef` inheritance edges) or `sb model`.
+
+**Multi-language.** Atlas now analyzes **Python** alongside the JavaScript/
+TypeScript family: every frontend lowers into one shared Atlas IR, so
+language-neutral rules run everywhere unchanged. Import resolution,
+circular-import and dead-file detection, and the cross-language
+`complexity/large-function` rule all work on Python with no per-language
+special-casing — a rule is either language-agnostic or explicitly scoped to
+a language family, never a `if language == …` branch buried in a detector.
 
 Run `sb explain <rule-id>` for detection logic, false-positive guards, and
 fix guidance. Accuracy beats quantity: anything the resolver cannot prove is

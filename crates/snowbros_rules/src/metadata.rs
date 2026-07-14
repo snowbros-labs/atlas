@@ -81,6 +81,7 @@ const METADATA_SOURCES: &[&str] = &[
     include_str!("../rules/architecture/private-env-in-client.toml"),
     include_str!("../rules/architecture/server-only-in-client.toml"),
     include_str!("../rules/architecture/unused-export.toml"),
+    include_str!("../rules/complexity/large-function.toml"),
     include_str!("../rules/dependencies/unused-dependency.toml"),
     include_str!("../rules/environment/unused-env-var.toml"),
     include_str!("../rules/imports/broken-path-alias.toml"),

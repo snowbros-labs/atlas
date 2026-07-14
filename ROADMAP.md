@@ -34,7 +34,29 @@ and lowering the bar to try it.
 - **OSV / vulnerability data** — flag known-vulnerable dependencies with
   evidence.
 - **A second language family** (Python is the most-detected non-JS candidate),
-  only once the JS/TS core proves the model.
+  only once the JS/TS core proves the model. Language work follows
+  [RFC 0002](docs/rfcs/0002-atlas-multi-language-semantic-platform.md).
+
+## Multi-language — one engine, many frontends
+
+The long-term direction is a single semantic engine (one IR, one rule engine)
+that many language *frontends* lower into — not twelve separate analyzers. The
+full design, milestone plan, and language-maturity tiers are in
+[RFC 0002](docs/rfcs/0002-atlas-multi-language-semantic-platform.md) (Accepted).
+The short version:
+
+- **M3 (v0.4)** — extract the `LanguageFrontend` abstraction (TS/JS first), then
+  add **Python**. The second language is what proves the architecture, so the
+  abstraction lands before it.
+- **M4 (v0.5)** — the resolvable statically-typed trio: **Go, Rust, Java**.
+- **M5** — **C#** and **Dart/Flutter**, plus interprocedural analysis.
+- **v1.0** — **C** and **C++**, last and hardest, once every analysis stage is
+  proven on the earlier languages.
+
+Every language advances through explicit maturity tiers — Experimental → Preview
+→ Stable → Enterprise — and ships only after clearing the same accuracy gate the
+TypeScript engine already passed. Coverage never comes at the cost of
+correctness.
 
 ## Under consideration
 

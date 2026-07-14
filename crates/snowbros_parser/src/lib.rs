@@ -8,12 +8,17 @@
 //! oxc integration and the arena AST store land next.
 
 pub mod facts;
+pub mod frontend;
 pub mod imports;
 pub mod language;
 pub mod lowering;
+pub mod python;
 pub mod treesitter;
 
 pub use facts::{extract_facts, FileFacts, NamedItem, SecretCandidate, SecretSignal};
+pub use frontend::{
+    EcmaScriptFrontend, FrontendRegistry, LanguageFrontend, LoweredFile, PythonFrontend,
+};
 pub use imports::{extract_imports, Import, ImportKind};
 pub use language::Language;
 pub use lowering::lower;
