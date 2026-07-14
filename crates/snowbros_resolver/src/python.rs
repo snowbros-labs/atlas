@@ -40,17 +40,26 @@ pub enum PyResolution {
 /// `specifier` is the module reference verbatim (leading dots preserved for
 /// relative imports); `names` are the imported symbol names (`*` for a star
 /// import), used only to resolve bare relative imports like `from . import x`.
+///
+/// `root_package` is the scan root's own package name when the root directory
+/// is itself a package (contains a top-level `__init__.py`). Python makes such
+/// a package importable by its own name from the parent on `sys.path`, so an
+/// absolute import that leads with that name (`from fastapi.encoders import x`
+/// when scanning the `fastapi/` package) refers to a project file even though
+/// the leading segment is not a subdirectory of the root. Pass `None` when the
+/// root is a plain source directory.
 pub fn resolve_python_import(
     from: &Utf8Path,
     specifier: &str,
     names: &[String],
     files: &FileSet,
+    root_package: Option<&str>,
 ) -> PyResolution {
     let dots = specifier.chars().take_while(|c| *c == '.').count();
     if dots > 0 {
         return resolve_relative(from, specifier, dots, names, files);
     }
-    resolve_absolute(specifier, files)
+    resolve_absolute(specifier, names, files, root_package)
 }
 
 /// Resolves a relative import by walking up `dots - 1` package levels from the
@@ -129,15 +138,74 @@ fn join_str(base: &str, rest: &str) -> String {
     }
 }
 
-/// Resolves an absolute dotted import. Probes for a matching project file
-/// first (a first-party top-level package), falling back to `External` for
-/// the standard library or an installed third-party package.
-fn resolve_absolute(specifier: &str, files: &FileSet) -> PyResolution {
+/// Resolves an absolute dotted import. When the scan root is itself the package
+/// named by `root_package`, an import leading with that name is resolved against
+/// the root (Python imports the package by its own name from the parent). Then
+/// probes for a matching project file (a first-party top-level package). Falls
+/// back to `External` — the standard library or an installed third-party
+/// package — which Atlas cannot see and must never flag.
+fn resolve_absolute(
+    specifier: &str,
+    names: &[String],
+    files: &FileSet,
+    root_package: Option<&str>,
+) -> PyResolution {
+    // Root-is-a-package: an import leading with the root's own package name
+    // refers to the project (Python imports the package by name from the
+    // parent). A miss falls through to the ordinary probe below (kept
+    // conservative: a leading-package import we cannot see becomes External,
+    // never a false "unresolved").
+    if let Some(pkg) = root_package {
+        if let Some(rest) = strip_leading_segment(specifier, pkg) {
+            if rest.is_empty() {
+                // Bare `from <root_package> import a, b` — each name may be a
+                // root-level submodule (`from fastapi import routing`), exactly
+                // like the relative `from . import a, b` case. Resolve those;
+                // names that are re-exported attributes of the package
+                // `__init__` (not submodules) fall back to the `__init__`
+                // itself. This keeps the edge on the submodule actually
+                // imported rather than manufacturing a package-`__init__` cycle.
+                let mut targets: Vec<Utf8PathBuf> = names
+                    .iter()
+                    .filter(|n| n.as_str() != "*")
+                    .filter_map(|n| probe(n, files))
+                    .collect();
+                if targets.is_empty() {
+                    let init = Utf8PathBuf::from("__init__.py");
+                    if files.contains(&init) {
+                        targets.push(init);
+                    }
+                }
+                if !targets.is_empty() {
+                    targets.sort();
+                    targets.dedup();
+                    return PyResolution::Project(targets);
+                }
+            } else if let Some(path) = probe(&rest.replace('.', "/"), files) {
+                // `from <root_package>.a.b import x` → resolve `a/b` at the root.
+                return PyResolution::Project(vec![path]);
+            }
+        }
+    }
+
     let target = specifier.replace('.', "/");
     match probe(&target, files) {
         Some(path) => PyResolution::Project(vec![path]),
         None => PyResolution::External,
     }
+}
+
+/// If `specifier` leads with the dotted segment `seg` (exactly, at a `.`
+/// boundary or the whole string), returns the remainder after it (`""` when
+/// `specifier == seg`). Otherwise `None` — so `fastapimixed` is not treated as
+/// leading with `fastapi`.
+fn strip_leading_segment<'a>(specifier: &'a str, seg: &str) -> Option<&'a str> {
+    if specifier == seg {
+        return Some("");
+    }
+    specifier
+        .strip_prefix(seg)
+        .and_then(|rest| rest.strip_prefix('.'))
 }
 
 /// Probes a module path (a forward-slash string) against the file set:
@@ -171,6 +239,7 @@ mod tests {
             ".models",
             &["User".to_string()],
             &fs,
+            None,
         );
         assert_eq!(r, PyResolution::Project(vec!["pkg/models.py".into()]));
     }
@@ -178,7 +247,7 @@ mod tests {
     #[test]
     fn relative_package_resolves_to_init() {
         let fs = files(&["pkg/app.py", "pkg/sub/__init__.py"]);
-        let r = resolve_python_import(Utf8Path::new("pkg/app.py"), ".sub", &[], &fs);
+        let r = resolve_python_import(Utf8Path::new("pkg/app.py"), ".sub", &[], &fs, None);
         assert_eq!(r, PyResolution::Project(vec!["pkg/sub/__init__.py".into()]));
     }
 
@@ -190,6 +259,7 @@ mod tests {
             ".",
             &["a".to_string(), "b".to_string()],
             &fs,
+            None,
         );
         assert_eq!(
             r,
@@ -207,6 +277,7 @@ mod tests {
             ".",
             &["helper".to_string()],
             &fs,
+            None,
         );
         assert_eq!(r, PyResolution::Project(vec!["pkg/__init__.py".into()]));
     }
@@ -214,14 +285,14 @@ mod tests {
     #[test]
     fn parent_relative_ascends_package_levels() {
         let fs = files(&["pkg/sub/app.py", "pkg/shared.py"]);
-        let r = resolve_python_import(Utf8Path::new("pkg/sub/app.py"), "..shared", &[], &fs);
+        let r = resolve_python_import(Utf8Path::new("pkg/sub/app.py"), "..shared", &[], &fs, None);
         assert_eq!(r, PyResolution::Project(vec!["pkg/shared.py".into()]));
     }
 
     #[test]
     fn broken_relative_import_is_unresolved() {
         let fs = files(&["pkg/app.py"]);
-        let r = resolve_python_import(Utf8Path::new("pkg/app.py"), ".missing", &[], &fs);
+        let r = resolve_python_import(Utf8Path::new("pkg/app.py"), ".missing", &[], &fs, None);
         assert_eq!(r, PyResolution::Unresolved(".missing".to_string()));
     }
 
@@ -229,11 +300,11 @@ mod tests {
     fn absolute_stdlib_import_is_external_not_unresolved() {
         let fs = files(&["pkg/app.py"]);
         assert_eq!(
-            resolve_python_import(Utf8Path::new("pkg/app.py"), "os", &[], &fs),
+            resolve_python_import(Utf8Path::new("pkg/app.py"), "os", &[], &fs, None),
             PyResolution::External
         );
         assert_eq!(
-            resolve_python_import(Utf8Path::new("pkg/app.py"), "os.path", &[], &fs),
+            resolve_python_import(Utf8Path::new("pkg/app.py"), "os.path", &[], &fs, None),
             PyResolution::External
         );
     }
@@ -241,7 +312,89 @@ mod tests {
     #[test]
     fn absolute_first_party_package_resolves_to_project_file() {
         let fs = files(&["myapp/__init__.py", "myapp/util.py", "main.py"]);
-        let r = resolve_python_import(Utf8Path::new("main.py"), "myapp.util", &[], &fs);
+        let r = resolve_python_import(Utf8Path::new("main.py"), "myapp.util", &[], &fs, None);
         assert_eq!(r, PyResolution::Project(vec!["myapp/util.py".into()]));
+    }
+
+    #[test]
+    fn absolute_import_of_root_package_name_resolves_at_root() {
+        // Scanning the `fastapi/` package itself: the fileset is root-relative
+        // (`encoders.py`, not `fastapi/encoders.py`), yet code imports
+        // `from fastapi.encoders import x`. With the root package name known,
+        // the leading segment resolves to the root.
+        let fs = files(&["__init__.py", "encoders.py", "middleware/cors.py"]);
+        assert_eq!(
+            resolve_python_import(
+                Utf8Path::new("routing.py"),
+                "fastapi.encoders",
+                &[],
+                &fs,
+                Some("fastapi"),
+            ),
+            PyResolution::Project(vec!["encoders.py".into()])
+        );
+        // A nested module under the root package resolves too.
+        assert_eq!(
+            resolve_python_import(
+                Utf8Path::new("applications.py"),
+                "fastapi.middleware.cors",
+                &[],
+                &fs,
+                Some("fastapi"),
+            ),
+            PyResolution::Project(vec!["middleware/cors.py".into()])
+        );
+        // The bare package name resolves to the root __init__.
+        assert_eq!(
+            resolve_python_import(
+                Utf8Path::new("cli.py"),
+                "fastapi",
+                &[],
+                &fs,
+                Some("fastapi")
+            ),
+            PyResolution::Project(vec!["__init__.py".into()])
+        );
+        // `from fastapi import encoders` names a *submodule* — the edge lands on
+        // the submodule file, not the package __init__ (which would fabricate a
+        // cycle with __init__'s own re-export of it).
+        assert_eq!(
+            resolve_python_import(
+                Utf8Path::new("param_functions.py"),
+                "fastapi",
+                &["encoders".to_string()],
+                &fs,
+                Some("fastapi"),
+            ),
+            PyResolution::Project(vec!["encoders.py".into()])
+        );
+    }
+
+    #[test]
+    fn root_package_miss_falls_through_to_external_not_unresolved() {
+        // A leading-root-package import we cannot see (e.g. a C-extension or a
+        // typo) must stay External — never a false "unresolved".
+        let fs = files(&["__init__.py", "encoders.py"]);
+        assert_eq!(
+            resolve_python_import(
+                Utf8Path::new("routing.py"),
+                "fastapi.does_not_exist",
+                &[],
+                &fs,
+                Some("fastapi"),
+            ),
+            PyResolution::External
+        );
+        // A third-party package that merely shares a prefix is not misrouted.
+        assert_eq!(
+            resolve_python_import(
+                Utf8Path::new("routing.py"),
+                "fastapi_extra.thing",
+                &[],
+                &fs,
+                Some("fastapi"),
+            ),
+            PyResolution::External
+        );
     }
 }

@@ -114,12 +114,19 @@ fn resolve_python(
     path: &Utf8PathBuf,
     import: &snowbros_parser::Import,
     file_set: &FileSet,
+    root_package: Option<&str>,
     from_id: NodeId,
     graph: &mut SemanticGraph,
     import_bindings: &mut Vec<ImportBinding>,
     unresolved: &mut Vec<UnresolvedImport>,
 ) {
-    match resolve_python_import(path, &import.specifier, &import.names, file_set) {
+    match resolve_python_import(
+        path,
+        &import.specifier,
+        &import.names,
+        file_set,
+        root_package,
+    ) {
         PyResolution::Project(targets) => {
             for target in &targets {
                 let to_id = graph.add_node(Node::file(target.clone()));
@@ -173,6 +180,14 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
     let frameworks = detect_frameworks(&facts);
     let file_set: FileSet = scanned.files.iter().map(|f| f.path.clone()).collect();
     let aliases = TsPaths::load(root);
+
+    // When the scan root is itself a Python package (has a top-level
+    // `__init__.py`), its own directory name is a package importable by that
+    // name — so `from <root_package>.mod import x` resolves against the root.
+    let root_package: Option<String> = file_set
+        .contains(&Utf8PathBuf::from("__init__.py"))
+        .then(|| root.file_name().map(str::to_string))
+        .flatten();
 
     // Language frontends drive the per-file parse phase. The registry is
     // shared read-only across the parallel lower below (frontends are Sync).
@@ -292,6 +307,7 @@ pub fn build(root: &Utf8PathBuf, use_cache: bool) -> Result<Pipeline, String> {
                             &path,
                             import,
                             &file_set,
+                            root_package.as_deref(),
                             from_id,
                             &mut graph,
                             &mut import_bindings,
